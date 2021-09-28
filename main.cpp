@@ -16,6 +16,9 @@ I2C i2c(PTE25, PTE24); //SDA,SCL
 Adafruit_BNO055 ob_head = Adafruit_BNO055(OB_HEAD, BNO055_ADDRESS_A, &i2c);
 Adafruit_BNO055 ob_body = Adafruit_BNO055(OB_BODY, BNO055_ADDRESS_B, &i2c);
 AnalogIn fsr_in(A0);
+InterruptIn btn(SW2);
+DigitalOut led_red(LED_RED);
+DigitalOut led_green(LED_GREEN);
 
 // Create static event queue
 static EventQueue queue(0);
@@ -34,6 +37,7 @@ auto e_send = make_user_allocated_event(send_data);
 static sensorSample_t obh_acc, obh_eul, obb_acc, obb_eul, scal_frc, fsr_plr, fsr_prr, fsr_plh, fsr_prh,
                         fsr_slf, fsr_srf, fsr_slk, fsr_srk, imul_acc, imul_gyr, imur_acc, imur_gyr;
 static systemMode_t mode = SETUP;
+static bool logging = false;
 
 /*
  *
@@ -216,6 +220,19 @@ void post_events() {
     }
 }
 
+void startstop_handler() {
+    if (logging) {
+        printf("STOP");
+        led_red = 1;
+        led_green = 0;
+    } else {
+        printf("START");
+        led_red = 0;
+        led_green = 1;
+    }
+    logging = !logging;
+}
+
 /*
  * Main program entry point.
  */
@@ -223,6 +240,8 @@ int main() {
     /* Initialize modules */
     // Configure I2C.
     i2c.frequency(400000);
+    // Button interrupt.
+    btn.rise(startstop_handler);
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));
