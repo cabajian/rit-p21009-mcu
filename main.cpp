@@ -168,14 +168,14 @@ void post_events() {
             // Initialize sensors and start events.
             ob_init(&ob_head);
             obh_acc.enabled = true;
-            obh_eul.enabled = true;
+            // obh_eul.enabled = true;
             e_obh.period(10);
             // ob_init(&ob_body);
             // scale_init();
             // fsr_init();
             imu_init(IMU_LEG_L_ADDR);
             imul_acc.enabled = true;
-            imul_gyr.enabled = true;
+            // imul_gyr.enabled = true;
             e_imul.period(10);
             e_send.period(10);
             // imu_init(IMU_LEG_R_ADDR);

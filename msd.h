@@ -47,7 +47,7 @@ typedef enum {
 } sensorNames_t;
 
 typedef struct {
-    bool enabled;
+    bool enabled = false;
     char shortname[8];
     char datatype[8];
     int datanum;
