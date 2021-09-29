@@ -19,6 +19,7 @@ AnalogIn fsr_in(A0);
 InterruptIn btn(SW2);
 DigitalOut led_red(LED_RED);
 DigitalOut led_green(LED_GREEN);
+DigitalOut led_blue(LED_BLUE);
 
 // Create static event queue
 static EventQueue queue(0);
@@ -31,6 +32,7 @@ auto e_imul = make_user_allocated_event(imu_collect, IMU_LEG_L);
 auto e_imur = make_user_allocated_event(imu_collect, IMU_LEG_R);
 auto e_cal = make_user_allocated_event(calibrate);
 auto e_send = make_user_allocated_event(send_data);
+auto e_startstop = make_user_allocated_event(print_startstop);
 // UserAllocatedEvent sensor_events[6] = {&e_obh, &e_obb, &e_scal, &e_fsr, &e_imul, &e_imur};
 
 // Global variables
@@ -38,6 +40,7 @@ static sensorSample_t obh_acc, obh_eul, obb_acc, obb_eul, scal_frc, fsr_plr, fsr
                         fsr_slf, fsr_srf, fsr_slk, fsr_srk, imul_acc, imul_gyr, imur_acc, imur_gyr;
 static systemMode_t mode = SETUP;
 static bool logging = false;
+static bool calibrated = false;
 
 /*
  *
@@ -135,32 +138,40 @@ void calibrate() {
     uint8_t system, gyro, accel, mag = 0;
     ob_head.getCalibration(&system, &gyro, &accel, &mag);
     printf("OBH>CAL>%d>%d>%d>%d\n", system, gyro, accel, mag);
-    ob_body.getCalibration(&system, &gyro, &accel, &mag);
-    printf("OBB>CAL>%d>%d>%d>%d\n", system, gyro, accel, mag);
+    // ob_body.getCalibration(&system, &gyro, &accel, &mag);
+    // printf("OBB>CAL>%d>%d>%d>%d\n", system, gyro, accel, mag);
+    if ((system & gyro & accel & mag) == 3) {
+        calibrated = true;
+        mode = SETUP;
+        led_blue = 1;
+        queue.cancel(&e_cal);
+        post_events();
+    }
 }
 
 /* 
  * Send event.
  */
 void send_data() {
-    send_datum(&obh_acc);
-    send_datum(&obh_eul);
-    send_datum(&obb_acc);
-    send_datum(&obh_acc);
-    send_datum(&obb_eul);
-    send_datum(&scal_frc);
-    send_datum(&fsr_plr);
-    send_datum(&fsr_prr);
-    send_datum(&fsr_plh);
-    send_datum(&fsr_prh);
-    send_datum(&fsr_slf);
-    send_datum(&fsr_srf);
-    send_datum(&fsr_slk);
-    send_datum(&fsr_srk);
-    send_datum(&imul_acc);
-    send_datum(&imul_gyr);
-    send_datum(&imur_acc);
-    send_datum(&imur_gyr);
+    if (logging) {
+        send_datum(&obh_acc);
+        send_datum(&obh_eul);
+        send_datum(&obb_acc);
+        send_datum(&obb_eul);
+        send_datum(&scal_frc);
+        send_datum(&fsr_plr);
+        send_datum(&fsr_prr);
+        send_datum(&fsr_plh);
+        send_datum(&fsr_prh);
+        send_datum(&fsr_slf);
+        send_datum(&fsr_srf);
+        send_datum(&fsr_slk);
+        send_datum(&fsr_srk);
+        send_datum(&imul_acc);
+        send_datum(&imul_gyr);
+        send_datum(&imur_acc);
+        send_datum(&imur_gyr);
+    }
 }
 
 /*
@@ -172,14 +183,26 @@ void post_events() {
             // Initialize sensors and start events.
             ob_init(&ob_head);
             obh_acc.enabled = true;
-            // obh_eul.enabled = true;
+            snprintf(obh_acc.shortname, 4, "OBH");
+            snprintf(obh_acc.datatype, 4, "ACC");
+            obh_acc.datanum = 3;
+            obh_eul.enabled = true;
+            snprintf(obh_eul.shortname, 4, "OBH");
+            snprintf(obh_eul.datatype, 4, "EUL");
+            obh_eul.datanum = 3;
             e_obh.period(10);
             // ob_init(&ob_body);
             // scale_init();
             // fsr_init();
             imu_init(IMU_LEG_L_ADDR);
             imul_acc.enabled = true;
-            // imul_gyr.enabled = true;
+            snprintf(imul_acc.shortname, 5, "IMUL");
+            snprintf(imul_acc.datatype, 4, "ACC");
+            imul_acc.datanum = 3;
+            imul_gyr.enabled = true;
+            snprintf(imul_gyr.shortname, 5, "IMUL");
+            snprintf(imul_gyr.datatype, 4, "GYR");
+            imul_gyr.datanum = 3;
             e_imul.period(10);
             e_send.period(10);
             // imu_init(IMU_LEG_R_ADDR);
@@ -204,6 +227,8 @@ void post_events() {
             break;
         case CALIBRATE:
             // Start calibration routine event.
+            led_blue = 0;
+            e_cal.period(200);
             e_cal.try_call_on(&queue);
             break;
         default:
@@ -220,17 +245,19 @@ void post_events() {
     }
 }
 
-void startstop_handler() {
+void print_startstop() {
     if (logging) {
-        printf("STOP");
-        led_red = 1;
-        led_green = 0;
+        printf("STOP\n");
     } else {
-        printf("START");
-        led_red = 0;
-        led_green = 1;
+        printf("START\n");
     }
     logging = !logging;
+}
+
+void startstop_handler() {
+    led_red = !logging;
+    led_green = logging;
+    e_startstop.try_call_on(&queue);
 }
 
 /*
@@ -242,6 +269,10 @@ int main() {
     i2c.frequency(400000);
     // Button interrupt.
     btn.rise(startstop_handler);
+    // LEDs
+    led_red = 1;
+    led_green = 1;
+    led_blue = 1;
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));

@@ -1,21 +1,22 @@
+clear device;
 device = serialport("COM13",115200);
 M_ob_acc = ["x" "y" "z"];
 M_ob_eul = ["h" "r" "p"];
 M_imu_acc = ["x" "y" "z"];
 M_imu_gyr = ["x" "y" "z"];
 n = 0;
-DELIM = ">";
-TEST_START = "START";
-TEST_END = "END";
-LOG_UNKNOWN = "UNKNOWN";
 
 while (1)
     [sname,sdata,x,y,z] = readDataLine(device);
-    if (sname == TEST_END)
-        fname = sprintf('%s%d.dat','obAcc',n);
-        writematrix(M_ob_acc,fname,'Delimiter',';');  
-        fname = sprintf('%s%d.dat','imuAcc',n);
-        writematrix(M_ob_acc,fname,'Delimiter',';');  
+    if (contains(sname, "STOP"))
+        fname = sprintf('MatlabObj/%s%d.dat','obAcc',n);
+        writematrix(M_ob_acc,fname,'Delimiter',';');
+        fname = sprintf('MatlabObj/%s%d.dat','obEul',n);
+        writematrix(M_ob_eul,fname,'Delimiter',';');
+        fname = sprintf('MatlabObj/%s%d.dat','imuAcc',n);
+        writematrix(M_imu_acc,fname,'Delimiter',';');
+        fname = sprintf('MatlabObj/%s%d.dat','imuGyr',n);
+        writematrix(M_imu_gyr,fname,'Delimiter',';');
         M_ob_acc = ["x" "y" "z"];
         M_ob_eul = ["h" "r" "p"];
         M_imu_acc = ["x" "y" "z"];
@@ -31,9 +32,9 @@ while (1)
                 end
             case "IMUL"
                 if (sdata == "ACC")
-                    M_imu_accel = cat(1,M_imu_acc,[x y z]); 
+                    M_imu_acc = cat(1,M_imu_acc,[x y z]); 
                 elseif (sdata == "GYR")
-                    M_imu_gyro = cat(1,M_imu_gyr,[x y z]);
+                    M_imu_gyr = cat(1,M_imu_gyr,[x y z]);
                 end
         end
     end
@@ -44,42 +45,55 @@ end
 
 function [sname,sdata, x,y,z] = readDataLine(serial_device)
     data = readline(serial_device);
-    if (data == TEST_START)
-        sname = TEST_START;
+    if (isempty(data))
+        sname L= "";
         sdata = "";
         x = 0;
         y = 0;
         z = 0;
     else
-        line = split(data, delim);
-        if (length(line) < 3)
-            sname = LOG_UNKNOWN;
+        data = strtrim(data);
+        if (contains(data, "START"))
+            sname = "START";
             sdata = "";
             x = 0;
             y = 0;
             z = 0;
+        elseif (contains(data, "STOP"))
+            sname = "STOP";
+            sdata = "";
+            x = 0;
+            y = 0;
+            z = 0;  
         else
-            sname = line(1);
-            sdata = line(2);
-            vals = split(line(3));
-            vals(cellfun('isempty',vals)) = []; % remove empty cells
-            switch (length(vals))
-                case 1
-                    x = vals(1);
-                    y = 0;
-                    z = 0;
-                case 2
-                    x = vals(1);
-                    y = vals(2);
-                    z = 0;
-                case 3
-                    x = vals(1);
-                    y = vals(2);
-                    z = vals(3);
-                otherwise
-                    x = 0;
-                    y = 0;
-                    z = 0;
+            line = split(data, ">");
+             if (length(line) < 3)
+                sname = "UNKNOWN";
+                sdata = "";
+                x = 0;
+                y = 0;
+                z = 0;
+            else
+                sname = line(1);
+                sdata = line(2);
+                switch (length(line)-2)
+                    case 1
+                        x = line(3);
+                        y = 0;
+                        z = 0;
+                    case 2
+                        x = line(3);
+                        y = line(4);
+                        z = 0;
+                    case 3
+                        x = line(3);
+                        y = line(4);
+                        z = line(5);
+                    otherwise
+                        x = 0;
+                        y = 0;
+                        z = 0;
+                end
             end
         end
     end

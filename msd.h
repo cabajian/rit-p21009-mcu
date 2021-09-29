@@ -61,6 +61,7 @@ void fsr_collect();
 void imu_collect(int id);
 void calibrate();
 void send_data();
+void print_startstop();
 void post_events();
 
 /*  */
