@@ -4,18 +4,18 @@ M_ob_acc = ["x" "y" "z"];
 M_ob_eul = ["h" "r" "p"];
 M_imu_acc = ["x" "y" "z"];
 M_imu_gyr = ["x" "y" "z"];
-n = 0;
+n = 1;
 
 while (1)
     [sname,sdata,x,y,z] = readDataLine(device);
     if (contains(sname, "STOP"))
-        fname = sprintf('MatlabObj/%s%d.dat','obAcc',n);
+        fname = sprintf('MatlabObj/%s%d.csv','obAcc',n);
         writematrix(M_ob_acc,fname,'Delimiter',';');
-        fname = sprintf('MatlabObj/%s%d.dat','obEul',n);
+        fname = sprintf('MatlabObj/%s%d.csv','obEul',n);
         writematrix(M_ob_eul,fname,'Delimiter',';');
-        fname = sprintf('MatlabObj/%s%d.dat','imuAcc',n);
+        fname = sprintf('MatlabObj/%s%d.csv','imuAcc',n);
         writematrix(M_imu_acc,fname,'Delimiter',';');
-        fname = sprintf('MatlabObj/%s%d.dat','imuGyr',n);
+        fname = sprintf('MatlabObj/%s%d.csv','imuGyr',n);
         writematrix(M_imu_gyr,fname,'Delimiter',';');
         M_ob_acc = ["x" "y" "z"];
         M_ob_eul = ["h" "r" "p"];
@@ -46,7 +46,7 @@ end
 function [sname,sdata, x,y,z] = readDataLine(serial_device)
     data = readline(serial_device);
     if (isempty(data))
-        sname L= "";
+        sname = "";
         sdata = "";
         x = 0;
         y = 0;

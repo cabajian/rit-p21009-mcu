@@ -38,7 +38,7 @@ auto e_startstop = make_user_allocated_event(print_startstop);
 // Global variables
 static sensorSample_t obh_acc, obh_eul, obb_acc, obb_eul, scal_frc, fsr_plr, fsr_prr, fsr_plh, fsr_prh,
                         fsr_slf, fsr_srf, fsr_slk, fsr_srk, imul_acc, imul_gyr, imur_acc, imur_gyr;
-static systemMode_t mode = SETUP;
+static systemMode_t mode = CALIBRATE;
 static bool logging = false;
 static bool calibrated = false;
 
