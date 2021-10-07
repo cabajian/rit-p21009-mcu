@@ -7,65 +7,181 @@
  *   Main header for RIT MSD Team P21009 microcontroller software.
  */
 
-#ifndef MSD_INCLUDE_H
-#define MSD_INCLUDE_H
+#ifndef __MSD_INCLUDE_H__
+#define __MSD_INCLUDE_H__
 
 #include "Adafruit_BNO055.h"
+#include <iostream>
 
 /* LSM6DSOX macros */
-#define LSM6DSOX_ADDR_A         (0x6A<<1)
-#define IMU_LEG_L_ADDR          LSM6DSOX_ADDR_A
-#define LSM6DSOX_ADDR_B         (0x6B<<1)
-#define IMU_LEG_R_ADDR          LSM6DSOX_ADDR_B
-#define LSM6DSOX_WHO_AM_I_ADDR  (0x0F)
-#define LSM6DSOX_CTRL1_XL_ADDR  (0x10)
-#define LSM6DSOX_CTRL2_G_ADDR   (0x11)
-#define LSM6DSOX_CTRL3_C_ADDR   (0x12)
-#define LSM6DSOX_CTRL8_XL_ADDR  (0x17)
-#define LSM6DSOX_CTRL9_XL_ADDR  (0x18)
-#define LSM6DSOX_OUT_TEMP_L_ADDR (0x20)
-#define LSM6DSOX_OUTX_L_G_ADDR  (0x22)
-#define LSM6DSOX_OUTX_L_A_ADDR  (0x28)
+#define LSM6DSOX_ADDR_A             (0x6A<<1)
+#define LSM6DSOX_ADDR_B             (0x6B<<1)
+#define LSM6DSOX_WHO_AM_I_ADDR      (0x0F)
+#define LSM6DSOX_CTRL1_XL_ADDR      (0x10)
+#define LSM6DSOX_CTRL2_G_ADDR       (0x11)
+#define LSM6DSOX_CTRL3_C_ADDR       (0x12)
+#define LSM6DSOX_CTRL8_XL_ADDR      (0x17)
+#define LSM6DSOX_CTRL9_XL_ADDR      (0x18)
+#define LSM6DSOX_OUT_TEMP_L_ADDR    (0x20)
+#define LSM6DSOX_OUTX_L_G_ADDR      (0x22)
+#define LSM6DSOX_OUTX_L_A_ADDR      (0x28)
+
+// Number of ADC samples per datum collection.
+#define ADC_SAMPLES                 (10)
 
 typedef enum {
     IDLE,
     SETUP,
     RUN,
     CALIBRATE
-} systemMode_t;
+} systemMode;
+static const char * mode_to_string(systemMode mode) {
+    switch (mode) {
+        case IDLE:
+            return "IDLE";
+        case SETUP:
+            return "SETUP";
+        case RUN:
+            return "RUN";
+        case CALIBRATE:
+            return "CALIBRATE";
+    }
+}
+#define MODE_STR(x)    (mode_to_string(x))
 
 typedef enum {
-    OB_HEAD,
-    OB_BODY,
-    CHEST_SCALE,
-    FSR_RIB_L,
-    FSR_RIB_R,
-    FSR_HIP_L,
-    FSR_HIP_R,
-    IMU_LEG_L,
-    IMU_LEG_R
-} sensorNames_t;
+    ORIENTATION_BOARD,
+    SCALE,
+    FSR,
+    IMU
+} sensorType;
+static const char * stype_to_string(sensorType type) {
+    switch (type) {
+        case ORIENTATION_BOARD:
+            return "OB";
+        case SCALE:
+            return "SCAL";
+        case FSR:
+            return "FSR";
+        case IMU:
+            return "IMU";
+    }
+}
+#define STYPE_STR(x)    (stype_to_string(x))
+
+typedef enum {
+    HEAD,
+    BODY,
+    CHEST,
+    RIB_LEFT,
+    RIB_RIGHT,
+    FOREARM_LEFT,
+    FOREARM_RIGHT,
+    HIP_LEFT,
+    HIP_RIGHT,
+    LEG_LEFT,
+    LEG_RIGHT,
+    KNEE_LEFT,
+    KNEE_RIGHT
+} sensorLocation;
+static const char * slocation_to_string(sensorLocation loc) {
+    switch (loc) {
+        case HEAD:
+            return "H";
+        case BODY:
+            return "B";
+        case CHEST:
+            return "CH";
+        case RIB_LEFT:
+            return "RL";
+        case RIB_RIGHT:
+            return "RR";
+        case FOREARM_LEFT:
+            return "FL";
+        case FOREARM_RIGHT:
+            return "FR";
+        case HIP_LEFT:
+            return "HL";
+        case HIP_RIGHT:
+            return "HR";
+        case LEG_LEFT:
+            return "LL";
+        case LEG_RIGHT:
+            return "LR";
+        case KNEE_LEFT:
+            return "KL";
+        case KNEE_RIGHT:
+            return "KR";
+    }
+}
+#define SLOC_STR(x)    (slocation_to_string(x))
+
+typedef enum {
+    ACCELERATION,
+    EULER,
+    FORCE,
+    GYROSCOPE,
+    CALIBRATION
+} sensorDataType;
+static const char * sdatatype_to_string(sensorDataType mode) {
+    switch (mode) {
+        case ACCELERATION:
+            return "ACC";
+        case EULER:
+            return "EUL";
+        case FORCE:
+            return "FRC";
+        case GYROSCOPE:
+            return "GYR";
+        case CALIBRATION:
+            return "CAL";
+    }
+}
+#define SDTYPE_STR(x)    (sdatatype_to_string(x))
 
 typedef struct {
-    bool enabled = false;
-    char shortname[8];
-    char datatype[8];
+    bool enabled;
+    sensorType type;
+    sensorLocation location;
+    sensorDataType datatype;
     int datanum;
-    double data[3];
-} sensorSample_t;
+    double data[4];
+} sensorInstance;
+static sensorInstance sensors[] = {
+    // Enabled  Type               Location       Data Type     Data Num   Data
+    {0,         ORIENTATION_BOARD, HEAD,          ACCELERATION, 3,         {0,0,0,0}},
+    {0,         ORIENTATION_BOARD, HEAD,          EULER,        3,         {0,0,0,0}},
+    {0,         ORIENTATION_BOARD, BODY,          ACCELERATION, 3,         {0,0,0,0}},
+    {0,         ORIENTATION_BOARD, BODY,          EULER,        3,         {0,0,0,0}},
+    {0,         SCALE,             CHEST,         FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               RIB_LEFT,      FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               RIB_RIGHT,     FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               FOREARM_LEFT,  FORCE,        1,         {0,0,0,0}}, 
+    {0,         FSR,               FOREARM_RIGHT, FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               HIP_LEFT,      FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               HIP_RIGHT,     FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               KNEE_LEFT,     FORCE,        1,         {0,0,0,0}},
+    {0,         FSR,               KNEE_RIGHT,    FORCE,        1,         {0,0,0,0}},
+    {0,         IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}},
+    {0,         IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}},
+    {0,         IMU,               LEG_RIGHT,     ACCELERATION, 3,         {0,0,0,0}},
+    {0,         IMU,               LEG_RIGHT,     GYROSCOPE,    3,         {0,0,0,0}},
+    {0,         ORIENTATION_BOARD, HEAD,          CALIBRATION,  4,         {0,0,0,0}},
+    {0,         ORIENTATION_BOARD, BODY,          CALIBRATION,  4,         {0,0,0,0}},
+};
 
 /* Event functions */
-void ob_collect(int id);
-void scale_collect();
-void fsr_collect();
-void imu_collect(int id);
+void collect(int start_idx, int end_idx);
+void collect_ob(sensorInstance *sensor);
+void collect_scale(sensorInstance *sensor);
+void collect_fsr(sensorInstance *sensor);
+void collect_imu(sensorInstance *sensor);
 void calibrate();
-void send_data();
 void print_startstop();
 void post_events();
+void print_datum(sensorInstance *sensor);
+void send();
 
-/*  */
-void send_datum(sensorSample_t *sample);
 
 /* I2C read/write functions */
 void readReg(int address, uint8_t subaddress, char *data, int length);
@@ -83,4 +199,5 @@ int imu_init(uint8_t addr);
 void imu_get_temp(uint8_t addr, double *temp);
 void imu_get_gyro(uint8_t addr, double *x, double *y, double *z);
 void imu_get_accel(uint8_t addr, double *x, double *y, double *z);
+
 #endif
