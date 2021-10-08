@@ -26,7 +26,10 @@ DigitalOut led_blue(LED_BLUE);
 // Create static event queue
 static EventQueue queue(0);
 // Queue events
-auto e_collect = make_user_allocated_event(collect, 0, 16);
+auto e_collect_ob = make_user_allocated_event(collect_ob, 0, 3);
+auto e_collect_scale = make_user_allocated_event(collect_scale, 4, 4);
+auto e_collect_fsr = make_user_allocated_event(collect_fsr, 5, 12);
+auto e_collect_imu = make_user_allocated_event(collect_imu, 13, 16);
 auto e_calibrate = make_user_allocated_event(calibrate);
 auto e_send = make_user_allocated_event(send);
 auto e_startstop = make_user_allocated_event(print_startstop);
@@ -39,104 +42,112 @@ static bool logging = false;
 /*
  *
  */
-void collect_ob(sensorInstance *sensor) {
-    // Get pointer to correct BN055 instance.
+void collect_ob(int start_idx, int end_idx) {
     Adafruit_BNO055 *ob;
-    if (sensor->location == HEAD)
-        ob = &ob_head;
-    else if (sensor->location == BODY)
-        ob = &ob_body;
-    // Retrieve acceleration or euler vector and store.
-    if (sensor->datatype == ACCELERATION)
-        ob_get_accel(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
-    else if (sensor->datatype == EULER)
-        ob_get_euler(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
-}
-
-/*
- *
- */
-void collect_scale(sensorInstance *sensor) {
-    // Store the data.
-    sensor->data[0] = 0;
-}
-
-/*
- *
- */
-void collect_fsr(sensorInstance *sensor) {
-    // Set mux selects going to the PCB.
-    switch (sensor->location) {
-        case FOREARM_LEFT:
-        case RIB_LEFT:
-            pcb_s1 = 0;
-            pcb_s0 = 0;
-            break;
-        case FOREARM_RIGHT:
-        case RIB_RIGHT:
-            pcb_s1 = 0;
-            pcb_s0 = 1;
-            break;
-        case KNEE_LEFT:
-        case HIP_LEFT:
-            pcb_s1 = 1;
-            pcb_s0 = 0;
-            break;
-        case KNEE_RIGHT:
-        case HIP_RIGHT:
-            pcb_s1 = 1;
-            pcb_s0 = 1;
-            break;
-    }
-    // Read the analog value (average from ADC_SAMPLES).
-    float samples[10];
-    samples[0] = pcb_in.read();
-    for (int i = 1; i < ADC_SAMPLES; i++) {
-        samples[i] = (pcb_in.read() + samples[i-1])/2.0;
-    }
-    // Store the data.
-    sensor->data[0] = samples[ADC_SAMPLES-1];
-}
-
-/*
- *
- */
-void collect_imu(sensorInstance *sensor) {
-    // Get correct IMU (LSM6DSOX) I2C address.
-    uint8_t addr;
-    if (sensor->location == LEG_LEFT)
-        addr = LSM6DSOX_ADDR_A;
-    else if (sensor->location == LEG_RIGHT)
-        addr = LSM6DSOX_ADDR_B;
-    // Retrieve acceleration or gyroscope vector and store.
-    if (sensor->datatype == ACCELERATION)
-        imu_get_accel(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
-    else if (sensor->datatype == GYROSCOPE)
-        imu_get_gyro(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
-}
-
-/*
- * 
- */
-void collect(int start_idx, int end_idx) {
+    sensorInstance *sensor;
+    // Iterate over each Orientation Board
     for (int i = start_idx; i <= end_idx; i++) {
-        if (sensors[i].enabled) {
-            switch (sensors[i].type) {
-                case ORIENTATION_BOARD:
-                    collect_ob(&sensors[i]);
-                    break;
-                case SCALE:
-                    collect_scale(&sensors[i]);
-                    break;
-                case FSR:
-                    collect_fsr(&sensors[i]);
-                    break;
-                case IMU:
-                    collect_imu(&sensors[i]);
-                    break;
-            }
+        sensor = &sensors[i];
+        if (sensor->enabled) {
+            // Get pointer to correct BN055 instance.
+            if (sensor->location == HEAD)
+                ob = &ob_head;
+            else if (sensor->location == BODY)
+                ob = &ob_body;
+            // Retrieve acceleration or euler vector and store.
+            if (sensor->datatype == ACCELERATION)
+                ob_get_accel(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+            else if (sensor->datatype == EULER)
+                ob_get_euler(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+            sensor->newdata = true;
         }
     }
+}
+
+/*
+ *
+ */
+void collect_scale(int start_idx, int end_idx) {
+    sensorInstance *sensor;
+    // Iterate over each Scale
+    for (int i = start_idx; i <= end_idx; i++) {
+        sensor = &sensors[i];
+        if (sensor->enabled) {
+            // Store the data.
+            sensor->data[0] = 0;
+            sensor->newdata = true;
+        }
+    }
+}
+
+/*
+ *
+ */
+void collect_fsr(int start_idx, int end_idx) {
+    sensorInstance *sensor;
+    // Iterate over each FSR
+    for (int i = start_idx; i <= end_idx; i++) {
+        sensor = &sensors[i];
+        if (sensor->enabled) {
+            // Set mux selects going to the PCB.
+            switch (sensor->location) {
+                case FOREARM_LEFT:
+                case RIB_LEFT:
+                    pcb_s1 = 0;
+                    pcb_s0 = 0;
+                    break;
+                case FOREARM_RIGHT:
+                case RIB_RIGHT:
+                    pcb_s1 = 0;
+                    pcb_s0 = 1;
+                    break;
+                case KNEE_LEFT:
+                case HIP_LEFT:
+                    pcb_s1 = 1;
+                    pcb_s0 = 0;
+                    break;
+                case KNEE_RIGHT:
+                case HIP_RIGHT:
+                    pcb_s1 = 1;
+                    pcb_s0 = 1;
+                    break;
+            }
+            // Read the analog value (average from ADC_SAMPLES).
+            float samples[10];
+            samples[0] = pcb_in.read();
+            for (int i = 1; i < ADC_SAMPLES; i++) {
+                samples[i] = (pcb_in.read() + samples[i-1])/2.0;
+            }
+            // Store the data.
+            sensor->data[0] = samples[ADC_SAMPLES-1];
+            sensor->newdata = true;
+        }
+    }
+}
+
+/*
+ *
+ */
+void collect_imu(int start_idx, int end_idx) {
+    uint8_t addr;
+    sensorInstance *sensor;
+    // Iterate over each IMU
+    for (int i = start_idx; i <= end_idx; i++) {
+        sensor = &sensors[i];
+        if (sensor->enabled) {
+            // Get correct IMU (LSM6DSOX) I2C address.
+            if (sensor->location == LEG_LEFT)
+                addr = LSM6DSOX_ADDR_A;
+            else if (sensor->location == LEG_RIGHT)
+                addr = LSM6DSOX_ADDR_B;
+            // Retrieve acceleration or gyroscope vector and store.
+            if (sensor->datatype == ACCELERATION)
+                imu_get_accel(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+            else if (sensor->datatype == GYROSCOPE)
+                imu_get_gyro(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+            sensor->newdata = true;
+        }
+    }    
 }
 
 /*
@@ -184,9 +195,12 @@ void calibrate() {
  * Send event.
  */
 void send() {
-    for (int i = 0; i < 17; i++)
-        if (sensors[i].enabled)
+    for (int i = 0; i < 17; i++) {
+        if (sensors[i].enabled && sensors[i].newdata) {
             print_datum(&sensors[i]);
+            sensors[i].newdata = false;
+        }
+    }
 }
 
 /*
@@ -222,12 +236,18 @@ void post_events() {
             imu_init(LSM6DSOX_ADDR_B);
             sensor.enabled = 0;
             // Event periods.
-            e_collect.period(10);
+            e_collect_ob.period(10);
+            e_collect_scale.period(12);
+            e_collect_fsr.period(50);
+            e_collect_imu.period(10);
             e_send.period(10);
             mode = RUN;
         case RUN:
             // Start events.
-            e_collect.try_call_on(&queue);
+            e_collect_ob.try_call_on(&queue);
+            e_collect_scale.try_call_on(&queue);
+            e_collect_fsr.try_call_on(&queue);
+            e_collect_imu.try_call_on(&queue);
             e_send.try_call_on(&queue);
             break;
         case CALIBRATE:
@@ -238,7 +258,10 @@ void post_events() {
             break;
         default:
             // IDLE mode. Suspend all events.
-            queue.cancel(&e_collect);
+            queue.cancel(&e_collect_ob);
+            queue.cancel(&e_collect_scale);
+            queue.cancel(&e_collect_fsr);
+            queue.cancel(&e_collect_imu);
             queue.cancel(&e_send);
             queue.cancel(&e_calibrate);
             break;

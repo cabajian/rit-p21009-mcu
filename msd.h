@@ -146,36 +146,36 @@ typedef struct {
     sensorDataType datatype;
     int datanum;
     double data[4];
+    bool newdata;
 } sensorInstance;
 static sensorInstance sensors[] = {
-    // Enabled  Type               Location       Data Type     Data Num   Data
-    {0,         ORIENTATION_BOARD, HEAD,          ACCELERATION, 3,         {0,0,0,0}},
-    {0,         ORIENTATION_BOARD, HEAD,          EULER,        3,         {0,0,0,0}},
-    {0,         ORIENTATION_BOARD, BODY,          ACCELERATION, 3,         {0,0,0,0}},
-    {0,         ORIENTATION_BOARD, BODY,          EULER,        3,         {0,0,0,0}},
-    {0,         SCALE,             CHEST,         FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               RIB_LEFT,      FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               RIB_RIGHT,     FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               FOREARM_LEFT,  FORCE,        1,         {0,0,0,0}}, 
-    {0,         FSR,               FOREARM_RIGHT, FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               HIP_LEFT,      FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               HIP_RIGHT,     FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               KNEE_LEFT,     FORCE,        1,         {0,0,0,0}},
-    {0,         FSR,               KNEE_RIGHT,    FORCE,        1,         {0,0,0,0}},
-    {0,         IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}},
-    {0,         IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}},
-    {0,         IMU,               LEG_RIGHT,     ACCELERATION, 3,         {0,0,0,0}},
-    {0,         IMU,               LEG_RIGHT,     GYROSCOPE,    3,         {0,0,0,0}},
-    {0,         ORIENTATION_BOARD, HEAD,          CALIBRATION,  4,         {0,0,0,0}},
-    {0,         ORIENTATION_BOARD, BODY,          CALIBRATION,  4,         {0,0,0,0}},
+    // Enabled  Type               Location       Data Type     Data Num   Data       New Data
+    {false,     ORIENTATION_BOARD, HEAD,          ACCELERATION, 3,         {0,0,0,0}, false},
+    {false,     ORIENTATION_BOARD, HEAD,          EULER,        3,         {0,0,0,0}, false},
+    {false,     ORIENTATION_BOARD, BODY,          ACCELERATION, 3,         {0,0,0,0}, false},
+    {false,     ORIENTATION_BOARD, BODY,          EULER,        3,         {0,0,0,0}, false},
+    {false,     SCALE,             CHEST,         FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               RIB_LEFT,      FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               RIB_RIGHT,     FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               FOREARM_LEFT,  FORCE,        1,         {0,0,0,0}, false}, 
+    {false,     FSR,               FOREARM_RIGHT, FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               HIP_LEFT,      FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               HIP_RIGHT,     FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               KNEE_LEFT,     FORCE,        1,         {0,0,0,0}, false},
+    {false,     FSR,               KNEE_RIGHT,    FORCE,        1,         {0,0,0,0}, false},
+    {false,     IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}, false},
+    {false,     IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}, false},
+    {false,     IMU,               LEG_RIGHT,     ACCELERATION, 3,         {0,0,0,0}, false},
+    {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    3,         {0,0,0,0}, false},
+    {false,     ORIENTATION_BOARD, HEAD,          CALIBRATION,  4,         {0,0,0,0}, false},
+    {false,     ORIENTATION_BOARD, BODY,          CALIBRATION,  4,         {0,0,0,0}, false}
 };
 
 /* Event functions */
-void collect(int start_idx, int end_idx);
-void collect_ob(sensorInstance *sensor);
-void collect_scale(sensorInstance *sensor);
-void collect_fsr(sensorInstance *sensor);
-void collect_imu(sensorInstance *sensor);
+void collect_ob(int start_idx, int end_idx);
+void collect_scale(int start_idx, int end_idx);
+void collect_fsr(int start_idx, int end_idx);
+void collect_imu(int start_idx, int end_idx);
 void calibrate();
 void print_startstop();
 void post_events();
