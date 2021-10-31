@@ -13,6 +13,11 @@
 
 // Instances
 I2C i2c(PTE25, PTE24); //SDA,SCL
+#ifdef PI
+BufferedSerial serial(D1, D0, 576000);  // tx, rx
+#else
+BufferedSerial serial(USBTX, USBRX, 576000);  // tx, rx
+#endif
 Adafruit_BNO055 ob_head = Adafruit_BNO055(0, BNO055_ADDRESS_A, &i2c);
 Adafruit_BNO055 ob_body = Adafruit_BNO055(1, BNO055_ADDRESS_B, &i2c);
 AnalogIn pcb_in(A0);
@@ -38,6 +43,11 @@ auto e_startstop = make_user_allocated_event(print_startstop);
 static systemMode mode = SETUP;
 static bool calibrated = false;
 static bool logging = false;
+
+
+FileHandle *mbed::mbed_override_console(int fd) {
+    return &serial;
+}
 
 /*
  *
@@ -111,6 +121,9 @@ void collect_fsr(int start_idx, int end_idx) {
                     pcb_s1 = 1;
                     pcb_s0 = 1;
                     break;
+                default:
+                    pcb_s1 = 0;
+                    pcb_s0 = 0;
             }
             // Read the analog value (average from ADC_SAMPLES).
             float samples[10];
@@ -207,40 +220,48 @@ void send() {
  * 
  */
 void post_events() {
-    sensorInstance sensor;
+    sensorInstance *sensor;
     switch (mode) {
         case SETUP:
             // Initialize sensors.
             // OB (Head)
-            sensor = sensors[0];
             ob_init(&ob_head);
-            sensor.enabled = 1;
+            sensor = &sensors[0];
+            sensor->enabled = 1;
+            sensor = &sensors[1];
+            sensor->enabled = 1;
             // OB (Body)
-            sensor = sensors[2];
             ob_init(&ob_body);
-            sensor.enabled = 0;
+            sensor = &sensors[2];
+            sensor->enabled = 0;
+            sensor = &sensors[3];
+            sensor->enabled = 0;
             // Scale
-            sensor = sensors[4];            
-            sensor.enabled = 0;
+            sensor = &sensors[4];            
+            sensor->enabled = 1;
             // FSR
             for (int i = 5; i <= 12; i++) {
-                sensor = sensors[i];            
-                sensor.enabled = 0;
+                sensor = &sensors[i];            
+                sensor->enabled = 1;
             }
             // IMU (Left)
-            sensor = sensors[13];
             imu_init(LSM6DSOX_ADDR_A);
-            sensor.enabled = 1;
+            sensor = &sensors[13];
+            sensor->enabled = 1;
+            sensor = &sensors[14];
+            sensor->enabled = 1;
             // IMU (Right)
-            sensor = sensors[15];
             imu_init(LSM6DSOX_ADDR_B);
-            sensor.enabled = 0;
+            sensor = &sensors[15];
+            sensor->enabled = 0;
+            sensor = &sensors[16];
+            sensor->enabled = 0;
             // Event periods.
-            e_collect_ob.period(10);
-            e_collect_scale.period(12);
-            e_collect_fsr.period(50);
-            e_collect_imu.period(10);
-            e_send.period(10);
+            e_collect_ob.period(OB_PERIOD_MS);
+            e_collect_scale.period(SCALE_PERIOD_MS);
+            e_collect_fsr.period(FSR_PERIOD_MS);
+            e_collect_imu.period(IMU_PERIOD_MS);
+            e_send.period(SEND_PERIOD_MS);
             mode = RUN;
         case RUN:
             // Start events.
@@ -314,19 +335,18 @@ void print_datum(sensorInstance *sensor) {
     char buff[256];
     switch (sensor->datanum) {
         case 1:
-            snprintf(buff, 256, "%s>%s>%s>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0]);
+            printf("%s>%s>%s>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0]);
             break;
         case 2:
-            snprintf(buff, 256, "%s>%s>%s>%f>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0], sensor->data[1]);
+            printf("%s>%s>%s>%f>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0], sensor->data[1]);
             break;
         case 3:
-            snprintf(buff, 256, "%s>%s>%s>%f>%f>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0], sensor->data[1], sensor->data[2]);
+            printf("%s>%s>%s>%f>%f>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0], sensor->data[1], sensor->data[2]);
             break;
         case 4:
-            snprintf(buff, 256, "%s>%s>%s>%f>%f>%f>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0], sensor->data[1], sensor->data[2], sensor->data[3]);
+            printf("%s>%s>%s>%f>%f>%f>%f\n", STYPE_STR(sensor->type), SLOC_STR(sensor->location), SDTYPE_STR(sensor->datatype), sensor->data[0], sensor->data[1], sensor->data[2], sensor->data[3]);
             break;
     }
-    printf(buff);
 }
 
 

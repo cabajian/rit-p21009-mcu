@@ -29,6 +29,13 @@
 // Number of ADC samples per datum collection.
 #define ADC_SAMPLES                 (10)
 
+// Sensor periods
+#define OB_PERIOD_MS                (10)
+#define IMU_PERIOD_MS               (10)
+#define FSR_PERIOD_MS               (50)
+#define SCALE_PERIOD_MS             (12)
+#define SEND_PERIOD_MS              (10)
+
 typedef enum {
     IDLE,
     SETUP,
@@ -163,8 +170,8 @@ static sensorInstance sensors[] = {
     {false,     FSR,               HIP_RIGHT,     FORCE,        1,         {0,0,0,0}, false},
     {false,     FSR,               KNEE_LEFT,     FORCE,        1,         {0,0,0,0}, false},
     {false,     FSR,               KNEE_RIGHT,    FORCE,        1,         {0,0,0,0}, false},
-    {false,     IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}, false},
-    {false,     IMU,               LEG_LEFT,      FORCE,        1,         {0,0,0,0}, false},
+    {false,     IMU,               LEG_LEFT,      ACCELERATION, 3,         {0,0,0,0}, false},
+    {false,     IMU,               LEG_LEFT,      GYROSCOPE,    3,         {0,0,0,0}, false},
     {false,     IMU,               LEG_RIGHT,     ACCELERATION, 3,         {0,0,0,0}, false},
     {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    3,         {0,0,0,0}, false},
     {false,     ORIENTATION_BOARD, HEAD,          CALIBRATION,  4,         {0,0,0,0}, false},

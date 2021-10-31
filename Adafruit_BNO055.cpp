@@ -399,9 +399,9 @@ bool Adafruit_BNO055::write8(adafruit_bno055_reg_t reg, char value)
 {
   char reg_to_write = (char)(reg);
   i2c->write(_address<<1, &reg_to_write, 1, true);
-  ThisThread::sleep_for(1ms);
+//   ThisThread::sleep_for(1ms);
   i2c->write(_address<<1, &value, 1, false); 
-  ThisThread::sleep_for(1ms);
+//   ThisThread::sleep_for(1ms);
 
   /* ToDo: Check for error! */
   return true;
@@ -418,9 +418,9 @@ char Adafruit_BNO055::read8(adafruit_bno055_reg_t reg )
   char to_write = (char)reg;
 
   i2c->write(_address<<1, &to_write, 1, false);
-  ThisThread::sleep_for(1ms);
+//   ThisThread::sleep_for(1ms);
   i2c->read(_address<<1, &to_read, 1, false);
-  ThisThread::sleep_for(1ms);
+//   ThisThread::sleep_for(1ms);
   
   return to_read;
 }
@@ -435,9 +435,9 @@ bool Adafruit_BNO055::readLen(adafruit_bno055_reg_t reg, char* buffer, int len)
   char reg_to_write = (char)(reg);
 
   i2c->write(_address<<1, &reg_to_write, 1, false); 
-  ThisThread::sleep_for(1ms);
+//   ThisThread::sleep_for(1ms);
   i2c->read(_address<<1, buffer, len, false);
-  ThisThread::sleep_for(1ms);
+//   ThisThread::sleep_for(1ms);
 
   /* ToDo: Check for errors! */
   return true;
