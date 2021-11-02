@@ -14,17 +14,24 @@ double acc_sens = 0;
 double gyr_sens = 0;
 char data[14];
 
-
 int imu_init(uint8_t addr) {
     /* Initialize the LSM6DSOX */
     // CTRL3_C (Control register 3)
     //   set self-clearing reset bit
     setBits(addr, LSM6DSOX_CTRL3_C_ADDR, 0x01);
     readReg(addr, LSM6DSOX_CTRL3_C_ADDR, data, 1);
-    while(data[0] & 0x01) {
-        wait_us(100);
+    int iters = 100;
+    while(iters-- > 0) {
         // Read until reset bit clears
         readReg(addr, LSM6DSOX_CTRL3_C_ADDR, data, 1);
+        if (data[0] & 0x01) {
+            break;
+        }
+        wait_us(100);
+    }
+    if (iters == 0) {
+        // Failure.
+        return 0;
     }
     // CTRL3_C (Control register 3)
     //   set BDU to only update output regs after reading
@@ -45,7 +52,6 @@ int imu_init(uint8_t addr) {
     //   416Hz, 2000dps
     writeReg(addr, LSM6DSOX_CTRL2_G_ADDR, 0x6C);
     gyr_sens = 70.0; // 70.0 milli-dps per bit in 2000dps scale
-    printf("IMU initialized\r\n");
     // Success
     return 1;
 }

@@ -12,10 +12,7 @@
 
 int ob_init(Adafruit_BNO055 *ob) {
     if(!ob->begin()) {
-        printf("Orientation Board not detected!\r\n");
         return -1;
-    } else {
-        printf("Orientation Board was detected!\r\n");
     }
     ThisThread::sleep_for(1s);
     ob->setMode(Adafruit_BNO055::OPERATION_MODE_NDOF);
