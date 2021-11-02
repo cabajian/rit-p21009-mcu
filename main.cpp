@@ -216,10 +216,10 @@ int main() {
     /* Initialize modules */
     // Configure I2C.
     i2c.frequency(400000);
+    // Configure UART.
+    serial.set_blocking(false);
     // LEDs
     led_red = 1;
-    // Timer
-    t.start();
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));

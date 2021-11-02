@@ -58,7 +58,7 @@ int poll_cmd(BufferedSerial* ser) {
     std::string str;
     // Read from the serial buffer.
     int len = ser->read(buffer, MAX_STR_LEN);
-    if (len == 0) {
+    if (len <= 0) {
         // No data.
         return 0;
     } else {
@@ -71,14 +71,12 @@ int poll_cmd(BufferedSerial* ser) {
             // Command not complete. Repeatedly check for more data until 1ms timeout.
             int iters = 10;
             while (iters-- > 0) {
-                len += ser->read(buffer+len, MAX_STR_LEN);
+                len += ser->read(buffer+len, MAX_STR_LEN-len);
                 last = buffer[len-1];
                 if ((last == '\n') || (last == '\0')) {
                     str = buffer;
                     str.erase(len-1);
-                    iters = 0;
-                } else {
-                    wait_us(100);
+                    break;
                 }
             }
         }
