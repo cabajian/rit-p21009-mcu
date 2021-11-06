@@ -10,26 +10,47 @@
  
 #include <mbed.h>
 #include "msd.h"
+#include "EthernetInterface.h"
+#include "LWIPStack.h"
 
+// Static IP network variables
+static const char* PI_IP   = "169.254.108.19";
+static const char* MBED_IP = "192.168.0.38";
+static const char* NETMASK = "255.255.0.0";
+static const char* GATEWAY = "0.0.0.0";
+static const int   PORT    = 37;
+// Ethernet/socket objects.
+EthernetInterface eth;
+UDPSocket cs;
+SocketAddress ss;
+int status;
+
+/*
+ */
+void eth_init() {
+    // Connect this client to the ethernet interface.
+    printf("Connecting client...\n");
+    status = eth.set_network(MBED_IP, NETMASK, GATEWAY);
+    status = eth.connect();
+    status = cs.open(&eth);
+    status = cs.bind(PORT);
+    cs.set_blocking(false); // Prevent blocking.
+
+    printf("Connecting server...\n");
+    // Set server IP and port.
+    ss.set_ip_address(PI_IP);
+    ss.set_port(PORT);
+
+    printf("Ethernet initialized!\n");
+}
 
 /* 
  * Send sensor data.
  */
-void send_data(DeviceInstance *instance, DeviceInstance *system) {
-    if (system->enabled) {
-        switch (instance->numdata) {
-            case 1:
-                printf("%s%s%s%s%s%s%f\n", to_char(instance->dev), DELIM.c_str(), to_char(instance->loc), DELIM.c_str(), to_char(instance->func), DELIM.c_str(), instance->data[0]);
-                break;
-            case 2:
-                printf("%s%s%s%s%s%s%f%s%f\n", to_char(instance->dev), DELIM.c_str(), to_char(instance->loc), DELIM.c_str(), to_char(instance->func), DELIM.c_str(), instance->data[0], DELIM.c_str(), instance->data[1]);
-                break;
-            case 3:
-                printf("%s%s%s%s%s%s%f%s%f%s%f\n", to_char(instance->dev), DELIM.c_str(), to_char(instance->loc), DELIM.c_str(), to_char(instance->func), DELIM.c_str(), instance->data[0], DELIM.c_str(), instance->data[1], DELIM.c_str(), instance->data[2]);
-                break;
-            default:
-                printf("%s%s%s%s%s\n", to_char(instance->dev), DELIM.c_str(), to_char(instance->loc), DELIM.c_str(), to_char(instance->func));
-        }
+void eth_transmit(const char *data, const int size) {
+    int ret = cs.sendto(ss, data, size);
+    if(ret <= 0 ){
+        printf("Error sending data via Ethernet. Error code: %d\n", ret);
     }
 }
 

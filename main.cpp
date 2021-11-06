@@ -31,6 +31,12 @@ auto e_collect_scale = make_user_allocated_event(collect_scale);
 auto e_collect_fsr = make_user_allocated_event(collect_fsr);
 auto e_collect_imu = make_user_allocated_event(collect_imu);
 auto e_poll_cmd = make_user_allocated_event(poll_cmd, &serial);
+auto e_send_data = make_user_allocated_event(send_data);
+
+// Data buffer.
+char data_buff[MAX_STR_LEN];
+int buff_idx;
+Mutex buff_mutex;
 
 /*
  *
@@ -52,8 +58,10 @@ void collect_ob() {
                 ob_get_accel(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
             else if (sensor->func == EULER)
                 ob_get_euler(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
-            // Log the data.
-            send_data(sensor, &devices[0]);
+            // Add the data to the buffer.
+            buff_mutex.lock();
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0], DELIM.c_str(), sensor->data[1], DELIM.c_str(), sensor->data[2]);
+            buff_mutex.unlock();
         }
     }
 }
@@ -69,8 +77,10 @@ void collect_scale() {
         if (sensor->enabled) {
             // Store the data.
             sensor->data[0] = 0; // TODO: scale needs to be implemented.
-            // Log the data.
-            send_data(sensor, &devices[0]);
+            // Add the data to the buffer.
+            buff_mutex.lock();
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0]);
+            buff_mutex.unlock();
         }
     }
 }
@@ -118,8 +128,10 @@ void collect_fsr() {
             }
             // Store the data.
             sensor->data[0] = samples[ADC_SAMPLES-1];
-            // Log the data.
-            send_data(sensor, &devices[0]);
+            // Add the data to the buffer.
+            buff_mutex.lock();
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0]);
+            buff_mutex.unlock();
         }
     }
 }
@@ -144,10 +156,21 @@ void collect_imu() {
                 imu_get_accel(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
             else if (sensor->func == GYROSCOPE)
                 imu_get_gyro(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
-            // Log the data.
-            send_data(sensor, &devices[0]);
+            // Add the data to the buffer.
+            buff_mutex.lock();
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0], DELIM.c_str(), sensor->data[1], DELIM.c_str(), sensor->data[2]);
+            buff_mutex.unlock();
         }
     }    
+}
+
+void send_data() {
+    if (devices[0].enabled) {
+        printf("Sending data...\n");
+        data_buff[buff_idx] = '\0';
+        eth_transmit(data_buff, buff_idx);
+        buff_idx = 0;
+    }
 }
 
 /*
@@ -157,7 +180,7 @@ void post_events() {
     DeviceInstance *sensor;
     // Initialize devices.
     // System Logging
-    devices[0].enabled = false;
+    devices[0].enabled = true;
     // OB (Head+Body)
     ob_init(&ob_head);
     ob_init(&ob_body);
@@ -187,15 +210,15 @@ void post_events() {
     e_collect_scale.period(SCALE_PERIOD_MS);
     e_collect_fsr.period(FSR_PERIOD_MS);
     e_collect_imu.period(IMU_PERIOD_MS);
-    e_poll_cmd.period(POLL_CMD_PERIOD_MS);
+    // e_poll_cmd.period(POLL_CMD_PERIOD_MS);
+    e_send_data.period(10);
     // Start events.
     e_collect_ob.try_call_on(&queue);
     e_collect_scale.try_call_on(&queue);
     e_collect_fsr.try_call_on(&queue);
     e_collect_imu.try_call_on(&queue);
-    e_poll_cmd.try_call_on(&queue);
-    // LED indicator.
-    led_red = 0;
+    // e_poll_cmd.try_call_on(&queue);
+    e_send_data.try_call_on(&queue);
 }
 
 /*
@@ -207,6 +230,7 @@ void suspend_events() {
     queue.cancel(&e_collect_scale);
     queue.cancel(&e_collect_fsr);
     queue.cancel(&e_collect_imu);
+    queue.cancel(&e_send_data);
 }
 
 /*
@@ -216,10 +240,8 @@ int main() {
     /* Initialize modules */
     // Configure I2C.
     i2c.frequency(400000);
-    // Configure UART.
-    serial.set_blocking(false);
-    // LEDs
-    led_red = 1;
+    // Init Ethernet.
+    eth_init();
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));

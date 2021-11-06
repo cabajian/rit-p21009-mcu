@@ -95,7 +95,7 @@ static DeviceInstance devices[] = {
 
 /* Communication Function Prototypes */
 // Send sensor data.
-void send_data(DeviceInstance *instance, DeviceInstance *system);
+void send_data();
 // Send sensor status.
 void send_status(DeviceInstance *instance, Function status);
 // Send system status.
@@ -119,6 +119,10 @@ void collect_fsr();
 void collect_imu();
 void post_events();
 void suspend_events();
+
+/* Ethernet Function Prototypes */
+void eth_init();
+void eth_transmit(const char *data, const int size);
 
 /* I2C Read/Write Function Prototypes */
 void readReg(int address, uint8_t subaddress, char *data, int length);

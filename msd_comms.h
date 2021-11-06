@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#define MAX_STR_LEN     (256)
+#define MAX_STR_LEN     (1024)
 
 static const std::string DELIM = ">";
 
