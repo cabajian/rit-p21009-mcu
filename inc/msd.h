@@ -1,5 +1,5 @@
 /*
- * File    : main.cpp
+ * File    : msd.cpp
  * Author  : Chris Abajian (cxa6282@rit.edu)
  * Created : September 5, 2021
  *
@@ -12,9 +12,7 @@
 #ifndef __MSD_INCLUDE_H__
 #define __MSD_INCLUDE_H__
 
-#include "Adafruit_BNO055.h"
-#include "msd_comms.h"
-#include "HX711_mbed.h"
+#include "communications.h"
 
 // UART definitions.
 #ifdef DEBUG
@@ -31,18 +29,6 @@
 #define PCB_S1_OUT      (PTD0)
 #define PCB_S0_OUT      (PTC4)
 
-// LSM6DSOX Addresses.
-#define LSM6DSOX_ADDR_A             (0x6A<<1)
-#define LSM6DSOX_ADDR_B             (0x6B<<1)
-#define LSM6DSOX_WHO_AM_I_ADDR      (0x0F)
-#define LSM6DSOX_CTRL1_XL_ADDR      (0x10)
-#define LSM6DSOX_CTRL2_G_ADDR       (0x11)
-#define LSM6DSOX_CTRL3_C_ADDR       (0x12)
-#define LSM6DSOX_CTRL8_XL_ADDR      (0x17)
-#define LSM6DSOX_CTRL9_XL_ADDR      (0x18)
-#define LSM6DSOX_OUT_TEMP_L_ADDR    (0x20)
-#define LSM6DSOX_OUTX_L_G_ADDR      (0x22)
-#define LSM6DSOX_OUTX_L_A_ADDR      (0x28)
 // Number of ADC samples per datum collection.
 #define ADC_SAMPLES                 (10)
 // Sensor sampling periods.
@@ -53,7 +39,7 @@
 #define SEND_PERIOD_MS              (10)
 #define POLL_CMD_PERIOD_MS          (100)
 
-/* Sensor Structures */
+// Indices of the device array.
 #define OB_FIRST_IDX                (1)
 #define OB_LAST_IDX                 (4)
 #define SCALE_FIRST_IDX             (5)
@@ -62,6 +48,8 @@
 #define FSR_LAST_IDX                (13)
 #define IMU_FIRST_IDX               (14)
 #define IMU_LAST_IDX                (17)
+
+// A structure of a single device instance.
 typedef struct {
     bool enabled;
     Device dev;
@@ -99,26 +87,5 @@ void collect_fsr();
 void collect_imu();
 void post_events();
 void suspend_events();
-
-/* Ethernet Function Prototypes */
-void eth_init();
-void eth_transmit(const char *data, const int size);
-
-/* I2C Read/Write Function Prototypes */
-void readReg(int address, uint8_t subaddress, char *data, int length);
-void writeReg(int address, uint8_t subaddress, uint8_t command);
-void setBits(int address, uint8_t subaddress, uint8_t mask);
-void clearBits(int address, uint8_t subaddress, uint8_t mask);
-
-/* Orientation Board Function Prototypes */
-int ob_init(Adafruit_BNO055 *ob);
-void ob_get_accel(Adafruit_BNO055 *ob, double *x, double *y, double *z);
-void ob_get_euler(Adafruit_BNO055 *ob, double *x, double *y, double *z);
-
-/* IMU Function Prototypes */
-int imu_init(uint8_t addr);
-void imu_get_temp(uint8_t addr, double *temp);
-void imu_get_gyro(uint8_t addr, double *x, double *y, double *z);
-void imu_get_accel(uint8_t addr, double *x, double *y, double *z);
 
 #endif

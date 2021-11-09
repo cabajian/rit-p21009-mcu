@@ -10,14 +10,13 @@
  
 #include <mbed.h>
 #include "msd.h"
+#include "ethernet.h"
+#include "i2c.h"
+#include "orientation_board.h"
+#include "imu.h"
 
 // Instances
-I2C i2c(I2C_SDA, I2C_SCL);
 BufferedSerial serial(UART_TX, UART_RX, UART_BAUD);
-// Console override. Required for non-USB printf stream.
-FileHandle *mbed::mbed_override_console(int fd) { return &serial; }
-Adafruit_BNO055 ob_head = Adafruit_BNO055(0, BNO055_ADDRESS_A, &i2c);
-Adafruit_BNO055 ob_body = Adafruit_BNO055(1, BNO055_ADDRESS_B, &i2c);
 AnalogIn pcb_in(PCB_ANALOG_IN);
 DigitalOut pcb_s1(PCB_S1_OUT);
 DigitalOut pcb_s0(PCB_S0_OUT);
@@ -61,26 +60,31 @@ static DeviceInstance devices[] = {
     {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    3,        {0,0,0,0}, 1,           {0,0,0}}
 };
 
-/*
- *
+/**
+ * Collects data from all enabled Orientation Boards and
+ * appends the encoded data to data_buff.
  */
 void collect_ob() {
-    Adafruit_BNO055 *ob;
     DeviceInstance *sensor;
     // Iterate over each Orientation Board
     for (int i = OB_FIRST_IDX; i <= OB_LAST_IDX; i++) {
         sensor = &devices[i];
         if (sensor->enabled) {
             // Get pointer to the correct BN055 instance.
+            int instance;
             if (sensor->loc == HEAD)
-                ob = &ob_head;
+                instance = OB_HEAD;
             else if (sensor->loc == BODY)
-                ob = &ob_body;
+                instance = OB_BODY;
+            else
+                continue;
             // Retrieve acceleration or euler vector and store.
             if (sensor->func == ACCELERATION)
-                ob_get_accel(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                OB_get_accel(instance, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
             else if (sensor->func == EULER)
-                ob_get_euler(ob, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                OB_get_euler(instance, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+            else
+                continue;
             // Add the data to the buffer.
             buff_mutex.lock();
             buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0], DELIM.c_str(), sensor->data[1], DELIM.c_str(), sensor->data[2]);
@@ -89,8 +93,9 @@ void collect_ob() {
     }
 }
 
-/*
- *
+/**
+ * Collects data from all enabled scales and
+ * appends the encoded data to data_buff.
  */
 void collect_scale() {
     DeviceInstance *sensor;
@@ -109,7 +114,8 @@ void collect_scale() {
 }
 
 /*
- *
+ * Collects data from all enabled FSR's and
+ * appends the encoded data to data_buff.
  */
 void collect_fsr() {
     DeviceInstance *sensor;
@@ -160,7 +166,8 @@ void collect_fsr() {
 }
 
 /*
- *
+ * Collects data from all enabled IMU's and
+ * appends the encoded data to data_buff.
  */
 void collect_imu() {
     uint8_t addr;
@@ -174,11 +181,15 @@ void collect_imu() {
                 addr = LSM6DSOX_ADDR_A;
             else if (sensor->loc == LEG_RIGHT)
                 addr = LSM6DSOX_ADDR_B;
+            else
+                continue;
             // Retrieve acceleration or gyroscope vector and store.
             if (sensor->func == ACCELERATION)
-                imu_get_accel(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                IMU_get_accel(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
             else if (sensor->func == GYROSCOPE)
-                imu_get_gyro(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                IMU_get_gyro(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+            else
+                continue;
             // Add the data to the buffer.
             buff_mutex.lock();
             buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0], DELIM.c_str(), sensor->data[1], DELIM.c_str(), sensor->data[2]);
@@ -187,11 +198,14 @@ void collect_imu() {
     }    
 }
 
+/**
+ * Sends the sensor data contained in data_buff to be 
+ * transmitted via Ethernet if system logging is enabled.
+ */
 void send_data() {
     if (devices[0].enabled) {
-        printf("Sending data...\n");
         data_buff[buff_idx] = '\0';
-        eth_transmit(data_buff, buff_idx);
+        ethernet_send(data_buff, buff_idx);
         buff_idx = 0;
     }
 }
@@ -205,8 +219,6 @@ void post_events() {
     // System Logging
     devices[0].enabled = true;
     // OB (Head+Body)
-    ob_init(&ob_head);
-    ob_init(&ob_body);
     for (int i = OB_FIRST_IDX; i <= OB_LAST_IDX; i++) {
        sensor = &devices[i];
        sensor->enabled = 1;
@@ -222,8 +234,6 @@ void post_events() {
         sensor->enabled = 1;
     }
     // IMU (Left+Right)
-    imu_init(LSM6DSOX_ADDR_A);
-    imu_init(LSM6DSOX_ADDR_B);
     for (int i = IMU_FIRST_IDX; i <= IMU_LAST_IDX; i++) {
         sensor = &devices[i];            
         sensor->enabled = 1;
@@ -234,7 +244,7 @@ void post_events() {
     e_collect_fsr.period(FSR_PERIOD_MS);
     e_collect_imu.period(IMU_PERIOD_MS);
     // e_poll_cmd.period(POLL_CMD_PERIOD_MS);
-    e_send_data.period(10);
+    e_send_data.period(SEND_PERIOD_MS);
     // Start events.
     e_collect_ob.try_call_on(&queue);
     e_collect_scale.try_call_on(&queue);
@@ -261,10 +271,14 @@ void suspend_events() {
  */
 int main() {
     /* Initialize modules */
-    // Configure I2C.
-    i2c.frequency(400000);
-    // Init Ethernet.
-    eth_init();
+    // Initialize communication modules.
+    I2C_init();
+    ethernet_init();
+    // Initialize sensors.
+    OB_init(OB_HEAD);
+    OB_init(OB_BODY);
+    IMU_init(LSM6DSOX_ADDR_A);
+    IMU_init(LSM6DSOX_ADDR_B);
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));
@@ -272,46 +286,5 @@ int main() {
     event_thread.join();
 
     /* Infinite loop */
-    while (true) {
-    }
-}
-
-/*
- * I2C Read helper function.   
- */
-void readReg(int address, uint8_t subaddress, char *data, int length = 1) {
-    // Set register to read
-    char subaddr[1] = {subaddress};
-    i2c.write(address, subaddr, 1);
-    // Read register
-    i2c.read(address, data, length);
-}
-
-/*
- * I2C Write helper function.    
- */
-void writeReg(int address, uint8_t subaddress, uint8_t command) {
-    // Write register
-    char wdata[2] = {subaddress, command};
-    i2c.write(address, wdata, 2);
-}
-
-/*
- * I2C Set bits function.    
- */
-void setBits(int address, uint8_t subaddress, uint8_t mask) {
-    char data[1];
-    readReg(address, subaddress, data, 1);
-    data[0] |= mask;
-    writeReg(address, subaddress, data[0]);
-}
-
-/*
- * I2C Clear bits function.    
- */
-void clearBits(int address, uint8_t subaddress, uint8_t mask) {
-    char data[1];
-    readReg(address, subaddress, data, 1);
-    data[0] &= ~mask;
-    writeReg(address, subaddress, data[0]);
+    while (true) {}
 }

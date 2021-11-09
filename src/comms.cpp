@@ -10,49 +10,6 @@
  
 #include <mbed.h>
 #include "msd.h"
-#include "EthernetInterface.h"
-#include "LWIPStack.h"
-
-// Static IP network variables
-static const char* PI_IP   = "169.254.108.19";
-static const char* MBED_IP = "192.168.0.38";
-static const char* NETMASK = "255.255.0.0";
-static const char* GATEWAY = "0.0.0.0";
-static const int   PORT    = 37;
-// Ethernet/socket objects.
-EthernetInterface eth;
-UDPSocket cs;
-SocketAddress ss;
-int status;
-
-/*
- */
-void eth_init() {
-    // Connect this client to the ethernet interface.
-    printf("Connecting client...\n");
-    status = eth.set_network(MBED_IP, NETMASK, GATEWAY);
-    status = eth.connect();
-    status = cs.open(&eth);
-    status = cs.bind(PORT);
-    cs.set_blocking(false); // Prevent blocking.
-
-    printf("Connecting server...\n");
-    // Set server IP and port.
-    ss.set_ip_address(PI_IP);
-    ss.set_port(PORT);
-
-    printf("Ethernet initialized!\n");
-}
-
-/* 
- * Send sensor data.
- */
-void eth_transmit(const char *data, const int size) {
-    int ret = cs.sendto(ss, data, size);
-    if(ret <= 0 ){
-        printf("Error sending data via Ethernet. Error code: %d\n", ret);
-    }
-}
 
 /* 
  * Send sensor status.

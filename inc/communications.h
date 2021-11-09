@@ -1,5 +1,5 @@
 /*
- * File    : msd_comms.h
+ * File    : communications.h
  * Author  : Chris Abajian (cxa6282@rit.edu)
  * Created : October 31, 2021
  *
@@ -11,8 +11,8 @@
 
 #pragma once
 
-#ifndef __MSD_COMMS_H__
-#define __MSD_COMMS_H__
+#ifndef __COMMUNICATIONS_INCLUDE_H__
+#define __COMMUNICATIONS_INCLUDE_H__
 
 #include <iostream>
 #include <string>
@@ -63,7 +63,7 @@ static const string to_string(Location loc) {
 static const char* to_char(Location loc) {
     return locationStrings[loc].c_str();
 }
-static const bool to_enum(std::string str, Location* loc) {
+static bool to_enum(std::string str, Location* loc) {
     for (int i = 1; i < 15; i++) {
         auto e = Location(i);
         if (str.compare(to_string(e)) == 0) {
@@ -98,7 +98,7 @@ static const string to_string(Device dev) {
 static const char* to_char(Device dev) {
     return deviceStrings[dev].c_str();
 }
-static const bool to_enum(std::string str, Device* dev) {
+static bool to_enum(std::string str, Device* dev) {
     for (int i = 1; i < 6; i++) {
         auto e = Device(i);
         if (str.compare(to_string(e)) == 0) {
@@ -143,7 +143,7 @@ static const string to_string(Function func) {
 static const char* to_char(Function func) {
     return functionStrings[func].c_str();
 }
-static const bool to_enum(std::string str, Function* func) {
+static bool to_enum(std::string str, Function* func) {
     for (int i = 1; i < 11; i++) {
         auto e = Function(i);
         if (str.compare(to_string(e)) == 0) {
