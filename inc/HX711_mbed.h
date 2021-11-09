@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include "mbed.h"
 
+#define timer_read_ms(x)    chrono::duration_cast<chrono::milliseconds>((x).elapsed_time()).count()
+
 class HX711
 {
 	private:

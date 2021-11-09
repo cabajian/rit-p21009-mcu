@@ -30,7 +30,7 @@
 #define PCB_S0_OUT      (PTC4)
 
 // Number of ADC samples per datum collection.
-#define ADC_SAMPLES                 (10)
+#define ADC_SAMPLES                 (1)
 // Sensor sampling periods.
 #define OB_PERIOD_MS                (10)
 #define IMU_PERIOD_MS               (10)

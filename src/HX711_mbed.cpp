@@ -6,8 +6,6 @@
 **/
 #include "HX711_mbed.h"
 
-#define timer_read_ms(x)    chrono::duration_cast<chrono::milliseconds>((x).elapsed_time()).count()
-
 // Make shiftIn() be aware of clockspeed for
 // faster CPUs like ESP32, Teensy 3.x and friends.
 // See also:
@@ -164,9 +162,6 @@ long HX711::read_average(uint8_t times) {
 	long sum = 0;
 	for (uint8_t i = 0; i < times; i++) {
 		sum += read();
-		// Probably will do no harm on AVR but will feed the Watchdog Timer (WDT) on ESP.
-		// https://github.com/bogde/HX711/issues/73
-        wait_us(1);
 	}
 	return sum / times;
 }
