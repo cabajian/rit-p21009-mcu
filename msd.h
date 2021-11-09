@@ -14,6 +14,7 @@
 
 #include "Adafruit_BNO055.h"
 #include "msd_comms.h"
+#include "HX711_mbed.h"
 
 // UART definitions.
 #ifdef DEBUG
@@ -71,27 +72,6 @@ typedef struct {
     int numoffsets;
     double offsets[3];
 } DeviceInstance;
-static DeviceInstance devices[] = {
-    // Enabled  Device             Location       Function      Num Data  Data       Num Offsets  Offsets
-    {false,     SYSTEM,            GLOBAL,        LOGGING,      0,        {0,0,0,0}, 0,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, HEAD,          ACCELERATION, 3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, HEAD,          EULER,        3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, BODY,          ACCELERATION, 3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, BODY,          EULER,        3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     SCALE,             CHEST,         FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               RIB_LEFT,      FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               RIB_RIGHT,     FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               FOREARM_LEFT,  FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}}, 
-    {false,     FSR,               FOREARM_RIGHT, FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               HIP_LEFT,      FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               HIP_RIGHT,     FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               KNEE_LEFT,     FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               KNEE_RIGHT,    FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_LEFT,      ACCELERATION, 3,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_LEFT,      GYROSCOPE,    3,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_RIGHT,     ACCELERATION, 3,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    3,        {0,0,0,0}, 1,           {0,0,0}}
-};
 
 /* Communication Function Prototypes */
 // Send sensor data.
