@@ -12,6 +12,7 @@
 #ifndef __MSD_INCLUDE_H__
 #define __MSD_INCLUDE_H__
 
+#include "mbed.h"
 #include "communications.h"
 
 // UART definitions.
@@ -48,6 +49,7 @@
 #define FSR_LAST_IDX                (13)
 #define IMU_FIRST_IDX               (14)
 #define IMU_LAST_IDX                (17)
+#define NUM_DEVICES                 (18)
 
 // A structure of a single device instance.
 typedef struct {
@@ -55,19 +57,15 @@ typedef struct {
     Device dev;
     Location loc;
     Function func;
-    int numdata;
-    double data[4];
-    int numoffsets;
-    double offsets[3];
+    double offset;
 } DeviceInstance;
 
 /* Communication Function Prototypes */
 // Send sensor data.
-void send_data();
+void send_data(bool loggingEn, char* data, int* size);
 // Send sensor status.
-void send_status(DeviceInstance *instance, Function status);
-// Send system status.
-void send_status(Function status);
+void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser);
+void handle_cmd(Device dev, Location loc, Function cmd, BufferedSerial* ser);
 // Polls for a command.
 //   Returns 1 if a command was received and successfully parsed.
 //   Returns 0 if no command was received.
@@ -87,5 +85,8 @@ void collect_fsr();
 void collect_imu();
 void post_events();
 void suspend_events();
+
+DeviceInstance* get_device_instance(Device dev, Location loc, Function func);
+DeviceInstance* get_device_instance(int index);
 
 #endif

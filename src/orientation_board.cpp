@@ -44,6 +44,17 @@ Adafruit_BNO055* OB_get(int instance) {
 }
 
 /**
+ * Get the calibration statuses from the specified Orientation Board instance.
+ */
+void OB_get_cal(int instance, uint8_t* sys, uint8_t* gyro, uint8_t* accel, uint8_t* mag) {
+    if (instance == OB_HEAD) {
+        ob_head.getCalibration(sys, gyro, accel, mag);
+    } else if (instance == OB_BODY) {
+        ob_body.getCalibration(sys, gyro, accel, mag);
+    }
+}
+
+/**
  * Get the linear acceleration vector from the specified Orientation Board instance.
  */
 void OB_get_accel(int instance, double *x, double *y, double *z) {

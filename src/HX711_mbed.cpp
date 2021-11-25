@@ -33,11 +33,9 @@ HX711::HX711() {
 HX711::~HX711() {
 }
 
-void HX711::begin(PinName dout, PinName pd_sck, uint8_t gain) {
-    DigitalOut clk(pd_sck, 0);
-    DigitalInOut data(dout, PIN_INPUT, PullUp, 0);
-	CLK = &clk;
-	DATA = &data;
+void HX711::begin(DigitalOut* clk, DigitalInOut* data, uint8_t gain) {
+	CLK = clk;
+	DATA = data;
 	set_gain(gain);
 }
 

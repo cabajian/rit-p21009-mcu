@@ -21,10 +21,12 @@
 #define SCALE_CAL_TIMEOUT_MS    (10000)
 #define SCALE_CAL_EPSILON       (0.05)
 
-int scale_init();
+int scale_init(long offset = 0);
 long scale_zero();
 void scale_set_offset(long offset);
 long scale_get_offset();
+float scale_get_factor();
 float scale_read();
+bool scale_calibrate(float pounds);
 
 #endif

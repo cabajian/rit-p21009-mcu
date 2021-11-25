@@ -40,7 +40,7 @@ typedef enum {
     KNEE_LEFT,
     KNEE_RIGHT
 } Location;
-static const string locationStrings[] = {
+static const std::string locationStrings[] = {
     "\0",
     "GLBL",
     "H",
@@ -57,13 +57,13 @@ static const string locationStrings[] = {
     "KL",
     "KR"
 };
-static const string to_string(Location loc) {
+inline std::string to_string(Location loc) {
     return locationStrings[loc];
 }
-static const char* to_char(Location loc) {
+inline char* to_char(Location loc) {
     return locationStrings[loc].c_str();
 }
-static bool to_enum(std::string str, Location* loc) {
+inline bool to_enum(std::string str, Location* loc) {
     for (int i = 1; i < 15; i++) {
         auto e = Location(i);
         if (str.compare(to_string(e)) == 0) {
@@ -84,7 +84,7 @@ typedef enum {
     FSR,
     IMU
 } Device;
-static const string deviceStrings[] = {
+static const std::string deviceStrings[] = {
     "\0",
     "SYS",
     "OB",
@@ -92,13 +92,13 @@ static const string deviceStrings[] = {
     "FSR",
     "IMU"
 };
-static const string to_string(Device dev) {
+inline std::string to_string(Device dev) {
     return deviceStrings[dev];
 }
-static const char* to_char(Device dev) {
+inline char* to_char(Device dev) {
     return deviceStrings[dev].c_str();
 }
-static bool to_enum(std::string str, Device* dev) {
+inline bool to_enum(std::string str, Device* dev) {
     for (int i = 1; i < 6; i++) {
         auto e = Device(i);
         if (str.compare(to_string(e)) == 0) {
@@ -118,32 +118,30 @@ typedef enum {
     FORCE,
     GYROSCOPE,
     RESTART,
-    LOGGING,
     ENABLE,
     CALIBRATION,
     OFFSET,
     ZERO
 } Function;
-static const string functionStrings[] = {
+static const std::string functionStrings[] = {
     "\0",
     "ACC",
     "EUL",
     "FRC",
     "GYR",
     "RESTART",
-    "LOG",
     "EN",
     "CAL",
     "OFF",
     "ZERO"
 };
-static const string to_string(Function func) {
+inline std::string to_string(Function func) {
     return functionStrings[func];
 }
-static const char* to_char(Function func) {
+inline char* to_char(Function func) {
     return functionStrings[func].c_str();
 }
-static bool to_enum(std::string str, Function* func) {
+inline to_enum(std::string str, Function* func) {
     for (int i = 1; i < 11; i++) {
         auto e = Function(i);
         if (str.compare(to_string(e)) == 0) {

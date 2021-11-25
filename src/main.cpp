@@ -20,7 +20,6 @@ BufferedSerial serial(UART_TX, UART_RX, UART_BAUD);
 AnalogIn pcb_in(PCB_ANALOG_IN);
 DigitalOut pcb_s1(PCB_S1_OUT);
 DigitalOut pcb_s0(PCB_S0_OUT);
-DigitalOut led_red(LED_RED);
 
 // Create static event queue
 static EventQueue queue(0);
@@ -30,7 +29,7 @@ auto e_collect_scale = make_user_allocated_event(collect_scale);
 auto e_collect_fsr = make_user_allocated_event(collect_fsr);
 auto e_collect_imu = make_user_allocated_event(collect_imu);
 auto e_poll_cmd = make_user_allocated_event(poll_cmd, &serial);
-auto e_send_data = make_user_allocated_event(send_data);
+auto e_send_data = make_user_allocated_event(send_data, devices[0].enabled, data_buff, &buff_idx);
 
 // Data buffer.
 char data_buff[MAX_STR_LEN];
@@ -39,25 +38,25 @@ Mutex buff_mutex;
 
 // Devices.
 static DeviceInstance devices[] = {
-    // Enabled  Device             Location       Function      Num Data  Data       Num Offsets  Offsets
-    {false,     SYSTEM,            GLOBAL,        LOGGING,      0,        {0,0,0,0}, 0,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, HEAD,          ACCELERATION, 3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, HEAD,          EULER,        3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, BODY,          ACCELERATION, 3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     ORIENTATION_BOARD, BODY,          EULER,        3,        {0,0,0,0}, 3,           {0,0,0}},
-    {false,     SCALE,             CHEST,         FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               RIB_LEFT,      FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               RIB_RIGHT,     FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               FOREARM_LEFT,  FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}}, 
-    {false,     FSR,               FOREARM_RIGHT, FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               HIP_LEFT,      FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               HIP_RIGHT,     FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               KNEE_LEFT,     FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     FSR,               KNEE_RIGHT,    FORCE,        1,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_LEFT,      ACCELERATION, 3,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_LEFT,      GYROSCOPE,    3,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_RIGHT,     ACCELERATION, 3,        {0,0,0,0}, 1,           {0,0,0}},
-    {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    3,        {0,0,0,0}, 1,           {0,0,0}}
+    // Enabled  Device             Location       Function      Offset
+    {false,     SYSTEM,            GLOBAL,        LOGGING,      0},
+    {false,     ORIENTATION_BOARD, HEAD,          ACCELERATION, 0},
+    {false,     ORIENTATION_BOARD, HEAD,          EULER,        0},
+    {false,     ORIENTATION_BOARD, BODY,          ACCELERATION, 0},
+    {false,     ORIENTATION_BOARD, BODY,          EULER,        0},
+    {false,     SCALE,             CHEST,         FORCE,        0},
+    {false,     FSR,               RIB_LEFT,      FORCE,        0},
+    {false,     FSR,               RIB_RIGHT,     FORCE,        0},
+    {false,     FSR,               FOREARM_LEFT,  FORCE,        0}, 
+    {false,     FSR,               FOREARM_RIGHT, FORCE,        0},
+    {false,     FSR,               HIP_LEFT,      FORCE,        0},
+    {false,     FSR,               HIP_RIGHT,     FORCE,        0},
+    {false,     FSR,               KNEE_LEFT,     FORCE,        0},
+    {false,     FSR,               KNEE_RIGHT,    FORCE,        0},
+    {false,     IMU,               LEG_LEFT,      ACCELERATION, 0},
+    {false,     IMU,               LEG_LEFT,      GYROSCOPE,    0},
+    {false,     IMU,               LEG_RIGHT,     ACCELERATION, 0},
+    {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    0}
 };
 
 /**
@@ -79,15 +78,16 @@ void collect_ob() {
             else
                 continue;
             // Retrieve acceleration or euler vector and store.
+            double data[3];
             if (sensor->func == ACCELERATION)
-                OB_get_accel(instance, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                OB_get_accel(instance, &data[0], &data[1], &data[2]);
             else if (sensor->func == EULER)
-                OB_get_euler(instance, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                OB_get_euler(instance, &data[0], &data[1], &data[2]);
             else
                 continue;
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0], DELIM.c_str(), sensor->data[1], DELIM.c_str(), sensor->data[2]);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data[0], DELIM.c_str(), data[1], DELIM.c_str(), data[2]);
             buff_mutex.unlock();
         }
     }
@@ -104,10 +104,10 @@ void collect_scale() {
         sensor = &devices[i];
         if (sensor->enabled) {
             // Store the data.
-            sensor->data[0] = 0; // TODO: scale needs to be implemented.
+            double data = 0; // TODO: scale needs to be implemented.
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0]);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data);
             buff_mutex.unlock();
         }
     }
@@ -156,10 +156,10 @@ void collect_fsr() {
                 samples[i] = (pcb_in.read() + samples[i-1])/2.0;
             }
             // Store the data.
-            sensor->data[0] = samples[ADC_SAMPLES-1];
+            double data = samples[ADC_SAMPLES-1];
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0]);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data);
             buff_mutex.unlock();
         }
     }
@@ -184,34 +184,23 @@ void collect_imu() {
             else
                 continue;
             // Retrieve acceleration or gyroscope vector and store.
+            double data[3];
             if (sensor->func == ACCELERATION)
-                IMU_get_accel(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                IMU_get_accel(addr, &data[0], &data[1], &data[2]);
             else if (sensor->func == GYROSCOPE)
-                IMU_get_gyro(addr, &(sensor->data[0]), &(sensor->data[1]), &(sensor->data[2]));
+                IMU_get_gyro(addr, &data[0], &data[1], &data[2]);
             else
                 continue;
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), sensor->data[0], DELIM.c_str(), sensor->data[1], DELIM.c_str(), sensor->data[2]);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data[0], DELIM.c_str(), data[1], DELIM.c_str(), data[2]);
             buff_mutex.unlock();
         }
     }    
 }
 
-/**
- * Sends the sensor data contained in data_buff to be 
- * transmitted via Ethernet if system logging is enabled.
- */
-void send_data() {
-    if (devices[0].enabled) {
-        data_buff[buff_idx] = '\0';
-        ethernet_send(data_buff, buff_idx);
-        buff_idx = 0;
-    }
-}
-
 /*
- * 
+ * Post (submit) all events in the queue.
  */
 void post_events() {
     DeviceInstance *sensor;
@@ -221,22 +210,22 @@ void post_events() {
     // OB (Head+Body)
     for (int i = OB_FIRST_IDX; i <= OB_LAST_IDX; i++) {
        sensor = &devices[i];
-       sensor->enabled = 1;
+       sensor->enabled = 0;
     }
     // Scale
     for (int i = SCALE_FIRST_IDX; i <= SCALE_LAST_IDX; i++) {
        sensor = &devices[i];
-       sensor->enabled = 1;
+       sensor->enabled = 0;
     }
     // FSR
     for (int i = FSR_FIRST_IDX; i <= FSR_LAST_IDX; i++) {
         sensor = &devices[i];            
-        sensor->enabled = 1;
+        sensor->enabled = 0;
     }
     // IMU (Left+Right)
     for (int i = IMU_FIRST_IDX; i <= IMU_LAST_IDX; i++) {
         sensor = &devices[i];            
-        sensor->enabled = 1;
+        sensor->enabled = 0;
     }
     // Event periods.
     e_collect_ob.period(OB_PERIOD_MS);
@@ -255,7 +244,7 @@ void post_events() {
 }
 
 /*
- * 
+ * Suspend all events in the event queue.
  */
 void suspend_events() {
     // Suspend all events.
@@ -264,6 +253,29 @@ void suspend_events() {
     queue.cancel(&e_collect_fsr);
     queue.cancel(&e_collect_imu);
     queue.cancel(&e_send_data);
+}
+
+int get_device_instance(int index, DeviceInstance* instance) {
+    instance = &devices[index];
+    return 0;
+}
+
+int get_device_instance(Device dev, Location loc, Function func, DeviceInstance* instance) {
+    for (int i = 0; i < NUM_DEVICES; i++) {
+        if (func == NO_FUNCTION) {
+            if ((devices[i].dev == dev) && (devices[i].loc == loc)) {
+                instance = &devices[i];
+                return i;
+            }
+        } else {
+            if ((devices[i].dev == dev) && (devices[i].loc == loc) && (devices[i].func == func)) {
+                instance = &devices[i];
+                return i;
+            }
+        }
+    }
+    instance = NULL;
+    return -1;
 }
 
 /*
@@ -279,6 +291,7 @@ int main() {
     OB_init(OB_BODY);
     IMU_init(LSM6DSOX_ADDR_A);
     IMU_init(LSM6DSOX_ADDR_B);
+    
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));

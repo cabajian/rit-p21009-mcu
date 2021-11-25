@@ -10,19 +10,92 @@
  
 #include <mbed.h>
 #include "msd.h"
+#include "orientation_board.h"
 
 /* 
- * Send sensor status.
+ * Sends the status contained in the specified device via UART.
  */
-void send_status(DeviceInstance *instance, Function status) {
-
+void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser) {
+    std::string str = to_string(instance->dev) + DELIM + to_string(instance->location) + DELIM + to_string(instance->status);
+    switch (status) {
+        case ENABLE:
+            str += DELIM + std::to_string(instance->enabled);
+            break;
+        case CALIBRATION:
+            if (instance->dev == ORIENTATION_BOARD) {
+                // Get current calibration status from this sensor.
+                int instanceNum = (instance->location == HEAD) ? OB_HEAD : OB_BODY;
+                uint8_t s, g, a, m;
+                OB_get_cal(instanceNum, &s, &g, &a, &m);
+                // Construct the string.
+                str += DELIM + std::to_string(g) + DELIM + std::to_string(a) +  DELIM + std::to_string(m) +  DELIM + std::to_string(s);
+            } else {
+                str += DELIM + "DEVICE_MISMATCH_ERROR";
+            }
+            break;
+        case OFFSET:
+            str += DELIM + std::to_string(instance->offset);
+            int i = get_device_instance(instance->dev, instance->loc, NO_FUNCTION, NULL);
+            // OB/IMU have two data types
+            if ((instance->dev == ORIENTATION_BOARD) || (instance->dev == IMU)) {
+                get_device_instance(i+1, instance);
+                str += DELIM + std::to_string(instance->offset);
+            }
+            break;
+        default:
+            str += DELIM + "INVALID_STATUS_ERROR";
+    }
+    // Send the status.
+    ser->write(str + "\n\0");
 }
 
-/* 
- * Send system status.
- */
-void send_status(Function status) {
 
+/**
+ * Sends the sensor data contained in data_buff to be 
+ * transmitted via Ethernet if system logging is enabled.
+ */
+void send_data(bool loggingEn, char* data, int* size) {
+    if (loggingEn) {
+        data[*size] = '\0';
+        ethernet_send(data, *size);
+        *size = 0;
+    }
+}
+
+void handle_cmd(Device dev, Location loc, Function cmd, BufferedSerial* ser) {
+    switch (cmd) {
+        case RESTART:
+            NVIC_SystemReset();//TODO: need to verify this works and doesn't halt
+            break;
+        case ENABLE:
+            // Enable the device.
+            DeviceInstance* instance;
+            int i = get_device_instance(dev, loc, NO_FUNCTION, instance);
+            instance->enabled = (args[0] > 0);
+            // OB/IMU have two data types
+            if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
+                get_device_instance(i+1, instance);
+                instance->enabled = (args[0] > 0);
+            }
+            break;
+        case OFF:
+            // Load the offsets.
+            // Special handling for OB's/IMU's
+            DeviceInstance* instance;
+            int j = get_device_instance(dev, loc, NO_FUNCTION, instance);
+            instance->offset = args[0];
+            // OB/IMU have two data types
+            if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
+                get_device_instance(i+1, instance);
+                instance->offset = args[1];
+            }
+            break;
+        case ZERO:
+            //TODO
+            break;
+        default:
+            ser->write("INVALID_COMMAND_ERROR\n\0");
+    }
 }
 
 /* 
@@ -69,7 +142,19 @@ int poll_cmd(BufferedSerial* ser) {
 
     // Act on the command.
     if (success) {
-        // TODO
+        if (args[0] == -9999) {
+            // Status request.
+            DeviceInstance* instance;
+            get_device_instance(dev, loc, NO_FUNCTION, instance);
+            if (instance == NULL) {
+                ser->write("INVALID_DEVICE_ERROR\n\0");
+            } else {
+                send_status(instance, func, ser);
+            }
+        } else {
+            // Act on the command.
+            handle_cmd(dec, loc, func, ser);
+        }
         return 1;
     } else {
         // Parsing error.
@@ -100,7 +185,12 @@ bool parse_cmd(std::string cmd, Device* dev, Location* loc, Function* func, doub
         if (*func == NO_FUNCTION) return false;
         // Get the arguments.
         for (int i = 3; (i < len) && (i-3 < numargs); i++) {
-            args[i-3] = stoi(vec.at(i));
+            if (vec.at(i) == "STAT") {
+                args[i-3] = -9999;
+                break;
+            } else {
+                args[i-3] = stoi(vec.at(i));
+            }
         }
         valid_cmd = true;
     }

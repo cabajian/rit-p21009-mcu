@@ -11,11 +11,13 @@
 
 // The scale.
 static HX711 scale;
+static DigitalOut clk(SCALE_CLK, 0);
+static DigitalInOut data(SCALE_DATA, PIN_INPUT, PullUp, 0);
 // Calibration factor to convert scale readout to 1 lb of force.
 static float calibration_factor = -7050;
 
-int scale_init(long offset = 0) {
-    scale.begin(SCALE_CLK, SCALE_DATA);
+int scale_init(long offset) {
+    scale.begin(&clk, &data, 64);
     scale.set_scale(calibration_factor);
     scale_set_offset(offset);
     return 1;
@@ -32,6 +34,10 @@ void scale_set_offset(long offset) {
 
 long scale_get_offset() {
     return scale.get_offset();
+}
+
+float scale_get_factor() {
+    return scale.get_scale();
 }
 
 float scale_read() {

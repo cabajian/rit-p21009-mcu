@@ -19,6 +19,7 @@
 
 int OB_init(int instance);
 Adafruit_BNO055* OB_get(int instance);
+void OB_get_cal(int instance, uint8_t* sys, uint8_t* gyro, uint8_t* accel, uint8_t* mag);
 void OB_get_accel(int instance, double *x, double *y, double *z);
 void OB_get_euler(int instance, double *x, double *y, double *z);
 
