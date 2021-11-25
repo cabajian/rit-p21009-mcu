@@ -15,31 +15,10 @@
 #include "orientation_board.h"
 #include "imu.h"
 
-// Instances
-BufferedSerial serial(UART_TX, UART_RX, UART_BAUD);
-AnalogIn pcb_in(PCB_ANALOG_IN);
-DigitalOut pcb_s1(PCB_S1_OUT);
-DigitalOut pcb_s0(PCB_S0_OUT);
-
-// Create static event queue
-static EventQueue queue(0);
-// Queue events
-auto e_collect_ob = make_user_allocated_event(collect_ob);
-auto e_collect_scale = make_user_allocated_event(collect_scale);
-auto e_collect_fsr = make_user_allocated_event(collect_fsr);
-auto e_collect_imu = make_user_allocated_event(collect_imu);
-auto e_poll_cmd = make_user_allocated_event(poll_cmd, &serial);
-auto e_send_data = make_user_allocated_event(send_data, devices[0].enabled, data_buff, &buff_idx);
-
-// Data buffer.
-char data_buff[MAX_STR_LEN];
-int buff_idx;
-Mutex buff_mutex;
-
 // Devices.
 static DeviceInstance devices[] = {
     // Enabled  Device             Location       Function      Offset
-    {false,     SYSTEM,            GLOBAL,        LOGGING,      0},
+    {false,     SYSTEM,            GLOBAL,        ENABLE,       0},
     {false,     ORIENTATION_BOARD, HEAD,          ACCELERATION, 0},
     {false,     ORIENTATION_BOARD, HEAD,          EULER,        0},
     {false,     ORIENTATION_BOARD, BODY,          ACCELERATION, 0},
@@ -58,6 +37,26 @@ static DeviceInstance devices[] = {
     {false,     IMU,               LEG_RIGHT,     ACCELERATION, 0},
     {false,     IMU,               LEG_RIGHT,     GYROSCOPE,    0}
 };
+// Instances
+BufferedSerial serial(UART_TX, UART_RX, UART_BAUD);
+AnalogIn pcb_in(PCB_ANALOG_IN);
+DigitalOut pcb_s1(PCB_S1_OUT);
+DigitalOut pcb_s0(PCB_S0_OUT);
+// Data buffer.
+char data_buff[MAX_STR_LEN];
+int buff_idx;
+Mutex buff_mutex;
+// Create static event queue
+static EventQueue queue(0);
+// Queue events
+auto e_collect_ob = make_user_allocated_event(collect_ob);
+auto e_collect_scale = make_user_allocated_event(collect_scale);
+auto e_collect_fsr = make_user_allocated_event(collect_fsr);
+auto e_collect_imu = make_user_allocated_event(collect_imu);
+auto e_poll_cmd = make_user_allocated_event(poll_cmd, &serial);
+auto e_send_data = make_user_allocated_event(send_data, devices[0].enabled, data_buff, &buff_idx);
+
+
 
 /**
  * Collects data from all enabled Orientation Boards and
@@ -255,27 +254,25 @@ void suspend_events() {
     queue.cancel(&e_send_data);
 }
 
-int get_device_instance(int index, DeviceInstance* instance) {
-    instance = &devices[index];
-    return 0;
+DeviceInstance* get_device_instance(int index) {
+    return &devices[index];
 }
 
-int get_device_instance(Device dev, Location loc, Function func, DeviceInstance* instance) {
+DeviceInstance* get_device_instance(Device dev, Location loc, Function func, int* index) {
     for (int i = 0; i < NUM_DEVICES; i++) {
         if (func == NO_FUNCTION) {
             if ((devices[i].dev == dev) && (devices[i].loc == loc)) {
-                instance = &devices[i];
-                return i;
+                *index = i;
+                return &devices[i];
             }
         } else {
             if ((devices[i].dev == dev) && (devices[i].loc == loc) && (devices[i].func == func)) {
-                instance = &devices[i];
-                return i;
+                *index = i;
+                return &devices[i];
             }
         }
     }
-    instance = NULL;
-    return -1;
+    return NULL;
 }
 
 /*

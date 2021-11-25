@@ -10,13 +10,15 @@
  
 #include <mbed.h>
 #include "msd.h"
+#include "ethernet.h"
 #include "orientation_board.h"
 
 /* 
  * Sends the status contained in the specified device via UART.
  */
 void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser) {
-    std::string str = to_string(instance->dev) + DELIM + to_string(instance->location) + DELIM + to_string(instance->status);
+    std::string str = to_string(instance->dev) + DELIM + to_string(instance->loc) + DELIM + to_string(status);
+    int i;
     switch (status) {
         case ENABLE:
             str += DELIM + std::to_string(instance->enabled);
@@ -24,7 +26,7 @@ void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser)
         case CALIBRATION:
             if (instance->dev == ORIENTATION_BOARD) {
                 // Get current calibration status from this sensor.
-                int instanceNum = (instance->location == HEAD) ? OB_HEAD : OB_BODY;
+                int instanceNum = (instance->loc == HEAD) ? OB_HEAD : OB_BODY;
                 uint8_t s, g, a, m;
                 OB_get_cal(instanceNum, &s, &g, &a, &m);
                 // Construct the string.
@@ -35,10 +37,10 @@ void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser)
             break;
         case OFFSET:
             str += DELIM + std::to_string(instance->offset);
-            int i = get_device_instance(instance->dev, instance->loc, NO_FUNCTION, NULL);
+            get_device_instance(instance->dev, instance->loc, NO_FUNCTION, &i);
             // OB/IMU have two data types
             if ((instance->dev == ORIENTATION_BOARD) || (instance->dev == IMU)) {
-                get_device_instance(i+1, instance);
+                instance = get_device_instance(i+1);
                 str += DELIM + std::to_string(instance->offset);
             }
             break;
@@ -46,7 +48,8 @@ void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser)
             str += DELIM + "INVALID_STATUS_ERROR";
     }
     // Send the status.
-    ser->write(str + "\n\0");
+    str += "\n\0";
+    ser->write(str.c_str(), str.length());
 }
 
 
@@ -62,31 +65,31 @@ void send_data(bool loggingEn, char* data, int* size) {
     }
 }
 
-void handle_cmd(Device dev, Location loc, Function cmd, BufferedSerial* ser) {
+void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSerial* ser) {
+    DeviceInstance* instance;
+    int i;
     switch (cmd) {
         case RESTART:
             NVIC_SystemReset();//TODO: need to verify this works and doesn't halt
             break;
         case ENABLE:
             // Enable the device.
-            DeviceInstance* instance;
-            int i = get_device_instance(dev, loc, NO_FUNCTION, instance);
+            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             instance->enabled = (args[0] > 0);
             // OB/IMU have two data types
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
-                get_device_instance(i+1, instance);
+                instance = get_device_instance(i+1);
                 instance->enabled = (args[0] > 0);
             }
             break;
-        case OFF:
+        case OFFSET:
             // Load the offsets.
             // Special handling for OB's/IMU's
-            DeviceInstance* instance;
-            int j = get_device_instance(dev, loc, NO_FUNCTION, instance);
+            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             instance->offset = args[0];
             // OB/IMU have two data types
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
-                get_device_instance(i+1, instance);
+                instance = get_device_instance(i+1);
                 instance->offset = args[1];
             }
             break;
@@ -94,7 +97,8 @@ void handle_cmd(Device dev, Location loc, Function cmd, BufferedSerial* ser) {
             //TODO
             break;
         default:
-            ser->write("INVALID_COMMAND_ERROR\n\0");
+            const char tmp[] = {"INVALID_COMMAND_ERROR\n\0"};
+            ser->write(tmp, sizeof(tmp));
     }
 }
 
@@ -137,23 +141,24 @@ int poll_cmd(BufferedSerial* ser) {
     Device dev;
     Location loc;
     Function func;
-    double args[3];
-    bool success = parse_cmd(str, &dev, &loc, &func, args, 3);
+    double args[2];
+    bool success = parse_cmd(str, &dev, &loc, &func, args, 2);
 
     // Act on the command.
     if (success) {
         if (args[0] == -9999) {
             // Status request.
-            DeviceInstance* instance;
-            get_device_instance(dev, loc, NO_FUNCTION, instance);
+            int i;
+            DeviceInstance* instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             if (instance == NULL) {
-                ser->write("INVALID_DEVICE_ERROR\n\0");
+                const char tmp[] = {"INVALID_DEVICE_ERROR\n\0"};
+                ser->write(tmp, sizeof(tmp));
             } else {
                 send_status(instance, func, ser);
             }
         } else {
             // Act on the command.
-            handle_cmd(dec, loc, func, ser);
+            handle_cmd(dev, loc, func, args, ser);
         }
         return 1;
     } else {

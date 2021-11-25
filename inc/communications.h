@@ -60,7 +60,7 @@ static const std::string locationStrings[] = {
 inline std::string to_string(Location loc) {
     return locationStrings[loc];
 }
-inline char* to_char(Location loc) {
+inline const char* to_char(Location loc) {
     return locationStrings[loc].c_str();
 }
 inline bool to_enum(std::string str, Location* loc) {
@@ -95,7 +95,7 @@ static const std::string deviceStrings[] = {
 inline std::string to_string(Device dev) {
     return deviceStrings[dev];
 }
-inline char* to_char(Device dev) {
+inline const char* to_char(Device dev) {
     return deviceStrings[dev].c_str();
 }
 inline bool to_enum(std::string str, Device* dev) {
@@ -138,10 +138,10 @@ static const std::string functionStrings[] = {
 inline std::string to_string(Function func) {
     return functionStrings[func];
 }
-inline char* to_char(Function func) {
+inline const char* to_char(Function func) {
     return functionStrings[func].c_str();
 }
-inline to_enum(std::string str, Function* func) {
+inline bool to_enum(std::string str, Function* func) {
     for (int i = 1; i < 11; i++) {
         auto e = Function(i);
         if (str.compare(to_string(e)) == 0) {

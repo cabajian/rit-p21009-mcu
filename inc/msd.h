@@ -65,7 +65,7 @@ typedef struct {
 void send_data(bool loggingEn, char* data, int* size);
 // Send sensor status.
 void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser);
-void handle_cmd(Device dev, Location loc, Function cmd, BufferedSerial* ser);
+void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSerial* ser);
 // Polls for a command.
 //   Returns 1 if a command was received and successfully parsed.
 //   Returns 0 if no command was received.
@@ -86,7 +86,7 @@ void collect_imu();
 void post_events();
 void suspend_events();
 
-DeviceInstance* get_device_instance(Device dev, Location loc, Function func);
+DeviceInstance* get_device_instance(Device dev, Location loc, Function func, int* index);
 DeviceInstance* get_device_instance(int index);
 
 #endif
