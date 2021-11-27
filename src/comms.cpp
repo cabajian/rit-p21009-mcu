@@ -76,7 +76,7 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
             // Enable the device.
             instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             instance->enabled = (args[0] > 0);
-            // OB/IMU have two data types
+            // OB/IMU have two data types.
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
                 instance = get_device_instance(i+1);
                 instance->enabled = (args[0] > 0);
@@ -84,17 +84,43 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
             break;
         case OFFSET:
             // Load the offsets.
-            // Special handling for OB's/IMU's
             instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             instance->offset = args[0];
-            // OB/IMU have two data types
+            // OB/IMU have two data types.
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
                 instance = get_device_instance(i+1);
                 instance->offset = args[1];
             }
             break;
         case ZERO:
-            //TODO
+            // Retrieve the device instance and get new offsets.
+            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
+            double data[];
+            switch (dev) {
+                case ORIENTATION_BOARD:
+                    if (loc == OB_HEAD) {
+                        
+                    } else {
+
+                    }
+                    break;
+                case SCALE:
+                    break;
+                case FSR:
+                    break;
+                case IMU:
+                    break;
+                default:
+                    const char tmp[] = {"INVALID_ZERO_COMMAND\n\0"};
+                    ser->write(tmp, sizeof(tmp));
+            }
+            // Zero this sensor and store the offsets.
+            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
+            // TODO: zero the sensor
+            // OB/IMU have two data types
+            if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
+                instance = get_device_instance(i+1);
+            }
             break;
         default:
             const char tmp[] = {"INVALID_COMMAND_ERROR\n\0"};
@@ -141,12 +167,12 @@ int poll_cmd(BufferedSerial* ser) {
     Device dev;
     Location loc;
     Function func;
-    double args[2];
-    bool success = parse_cmd(str, &dev, &loc, &func, args, 2);
+    double args[4];
+    bool success = parse_cmd(str, &dev, &loc, &func, args, 4);
 
     // Act on the command.
     if (success) {
-        if (args[0] == -9999) {
+        if (args[0] == STATUS_PARAM) {
             // Status request.
             int i;
             DeviceInstance* instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
@@ -191,8 +217,14 @@ bool parse_cmd(std::string cmd, Device* dev, Location* loc, Function* func, doub
         // Get the arguments.
         for (int i = 3; (i < len) && (i-3 < numargs); i++) {
             if (vec.at(i) == "STAT") {
-                args[i-3] = -9999;
+                args[i-3] = STATUS_PARAM;
                 break;
+            } else if (vac.at(i) == "ACC") {
+                args[i-3] = OFF_ACC_PARAM;
+            } else if (vac.at(i) == "EUL") {
+                args[i-3] = OFF_EUL_PARAM);
+            } else if (vac.at(i) == "GYR") {
+                args[i-3] = OFF_GYR_PARAM);
             } else {
                 args[i-3] = stoi(vec.at(i));
             }
