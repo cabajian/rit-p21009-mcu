@@ -25,19 +25,21 @@
     #define UART_RX         (D0)
     #define UART_BAUD       (576000)
 #endif
-// Pin mappings.
-#define PCB_ANALOG_IN   (A0)
-#define PCB_S1_OUT      (PTD0)
-#define PCB_S0_OUT      (PTC4)
 
-// Number of ADC samples per datum collection.
-#define ADC_SAMPLES                 (1)
 // Sensor sampling periods.
-#define OB_PERIOD_MS                (10)
-#define IMU_PERIOD_MS               (10)
-#define FSR_PERIOD_MS               (50)
-#define SCALE_PERIOD_MS             (12)
-#define SEND_PERIOD_MS              (10)
+#ifdef DEBUG
+    #define OB_PERIOD_MS                (1000)
+    #define IMU_PERIOD_MS               (1000)
+    #define FSR_PERIOD_MS               (5000)
+    #define SCALE_PERIOD_MS             (1200)
+    #define SEND_PERIOD_MS              (1000)
+#else
+    #define OB_PERIOD_MS                (10)
+    #define IMU_PERIOD_MS               (10)
+    #define FSR_PERIOD_MS               (50)
+    #define SCALE_PERIOD_MS             (12)
+    #define SEND_PERIOD_MS              (10)
+#endif
 #define POLL_CMD_PERIOD_MS          (100)
 
 // Indices of the device array.
@@ -57,12 +59,12 @@ typedef struct {
     Device dev;
     Location loc;
     Function func;
-    double offset;
+    double offsets[3];
 } DeviceInstance;
 
 /* Communication Function Prototypes */
 // Send sensor data.
-void send_data(bool loggingEn, char* data, int* size);
+void send_data(bool loggingEn, char* data, int* size, BufferedSerial* ser);
 // Send sensor status.
 void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser);
 void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSerial* ser);

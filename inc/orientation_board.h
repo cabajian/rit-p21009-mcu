@@ -12,6 +12,7 @@
 #ifndef __OB_INCLUDE_H__
 #define __OB_INCLUDE_H__
 
+#include "msd.h"
 #include "Adafruit_BNO055.h"
 
 #define OB_HEAD     (0)
@@ -19,6 +20,8 @@
 
 int OB_init(int instance);
 Adafruit_BNO055* OB_get(int instance);
+void OB_zero(DeviceInstance* sensor);
+bool OB_collect(DeviceInstance* sensor, double* data);
 void OB_get_cal(int instance, uint8_t* sys, uint8_t* gyro, uint8_t* accel, uint8_t* mag);
 void OB_get_accel(int instance, double *x, double *y, double *z);
 void OB_get_euler(int instance, double *x, double *y, double *z);

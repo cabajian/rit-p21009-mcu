@@ -19,10 +19,10 @@
 #include <vector>
 
 #define MAX_STR_LEN     (1024)
-#define STATUS_PARAM    (-9999)
-#define OFF_ACC_PARAM   (-1000)
-#define OFF_EUL_PARAM   (-1001)
-#define OFF_GYR_PARAM   (OFF_EUL_PARAM)
+#define STATUS_CODE     (-999)
+#define ACC_PARAM_CODE  (-1000)
+#define EUL_PARAM_CODE  (-1001)
+#define GYR_PARAM_CODE  (-1002)
 
 static const std::string DELIM = ">";
 

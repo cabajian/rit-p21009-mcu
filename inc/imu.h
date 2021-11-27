@@ -12,6 +12,7 @@
 #ifndef __IMU_INCLUDE_H__
 #define __IMU_INCLUDE_H__
 
+#include "msd.h"
 #include <stdint.h>
 
 // LSM6DSOX Addresses.
@@ -28,6 +29,8 @@
 #define LSM6DSOX_OUTX_L_A_ADDR      (0x28)
 
 int IMU_init(uint8_t addr);
+void IMU_zero(DeviceInstance* sensor);
+bool IMU_collect(DeviceInstance* sensor, double* data);
 void IMU_get_temp(uint8_t addr, double *temp);
 void IMU_get_gyro(uint8_t addr, double *x, double *y, double *z);
 void IMU_get_accel(uint8_t addr, double *x, double *y, double *z);

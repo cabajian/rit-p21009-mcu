@@ -60,6 +60,42 @@ int IMU_init(uint8_t addr) {
     return 1;
 }
 
+void IMU_zero(DeviceInstance* sensor) {
+    // Obtain 5 acceleration samples.
+    double data[3] = {0};
+    double tmp[3];
+    for (int i = 0; i < 5; i++) {
+        IMU_collect(sensor, tmp);
+        data[0] += tmp[0];
+        data[1] += tmp[1];
+        data[2] += tmp[2];
+    }
+    // Save the average offset (inverse of the reading).
+    sensor->offsets[0] = data[0] / (-5);
+    sensor->offsets[1] = data[1] / (-5);
+    sensor->offsets[2] = data[2] / (-5);
+}
+
+bool IMU_collect(DeviceInstance* sensor, double* data) {
+    // Get correct IMU (LSM6DSOX) I2C address.
+    uint8_t addr;
+    if (sensor->loc == LEG_LEFT)
+        addr = LSM6DSOX_ADDR_A;
+    else if (sensor->loc == LEG_RIGHT)
+        addr = LSM6DSOX_ADDR_B;
+    else
+        return false;
+    // Retrieve acceleration or gyroscope vector and store.
+    if (sensor->func == ACCELERATION)
+        IMU_get_accel(addr, &data[0], &data[1], &data[2]);
+    else if (sensor->func == GYROSCOPE)
+        IMU_get_gyro(addr, &data[0], &data[1], &data[2]);
+    else
+        return false;
+
+    return true;
+}
+
 /**
  * Gets the temperature from the IMU at the specified address.
  */

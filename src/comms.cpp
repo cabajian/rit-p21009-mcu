@@ -9,16 +9,22 @@
  */
  
 #include <mbed.h>
+#include <stdlib.h>
 #include "msd.h"
 #include "ethernet.h"
 #include "orientation_board.h"
+#include "fsr.h"
+#include "scale.h"
+#include "imu.h"
+
+static char cmd_buff[MAX_STR_LEN];
+static int cmd_idx = 0;
 
 /* 
  * Sends the status contained in the specified device via UART.
  */
 void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser) {
     std::string str = to_string(instance->dev) + DELIM + to_string(instance->loc) + DELIM + to_string(status);
-    int i;
     switch (status) {
         case ENABLE:
             str += DELIM + std::to_string(instance->enabled);
@@ -36,12 +42,18 @@ void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser)
             }
             break;
         case OFFSET:
-            str += DELIM + std::to_string(instance->offset);
-            get_device_instance(instance->dev, instance->loc, NO_FUNCTION, &i);
-            // OB/IMU have two data types
+            // OB/IMU have multiple offsets
             if ((instance->dev == ORIENTATION_BOARD) || (instance->dev == IMU)) {
-                instance = get_device_instance(i+1);
-                str += DELIM + std::to_string(instance->offset);
+                if (instance->func == ACCELERATION) {
+                    str += DELIM + "ACC";
+                } else if (instance->func == EULER) {
+                    str += DELIM + "EUL";
+                } else if (instance->func == GYROSCOPE) {
+                    str += DELIM + "GYR";
+                }
+                str += DELIM + std::to_string(instance->offsets[0]) + DELIM + std::to_string(instance->offsets[1]) + DELIM + std::to_string(instance->offsets[2]);
+            } else {
+                str += DELIM + std::to_string(instance->offsets[0]);
             }
             break;
         default:
@@ -57,10 +69,16 @@ void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser)
  * Sends the sensor data contained in data_buff to be 
  * transmitted via Ethernet if system logging is enabled.
  */
-void send_data(bool loggingEn, char* data, int* size) {
+void send_data(bool loggingEn, char* data, int* size, BufferedSerial* ser) {
     if (loggingEn) {
         data[*size] = '\0';
-        ethernet_send(data, *size);
+        #ifdef DEBUG
+            // DEBUG: write data over serial
+            ser->write(data, *size);
+        #else
+            // Non-debug: write data over ethernet
+            ethernet_send(data, *size);
+        #endif
         *size = 0;
     }
 }
@@ -83,32 +101,47 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
             }
             break;
         case OFFSET:
-            // Load the offsets.
             instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
-            instance->offset = args[0];
-            // OB/IMU have two data types.
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
-                instance = get_device_instance(i+1);
-                instance->offset = args[1];
-            }
+                // Load the 3 offsets.
+                if (args[0] == EUL_PARAM_CODE || args[0] == GYR_PARAM_CODE) {
+                    instance = get_device_instance(i+1);
+                }
+                instance->offsets[0] = args[1];
+                instance->offsets[1] = args[2];
+                instance->offsets[2] = args[3];
+            } else {
+                // Load the offset.
+                instance->offsets[0] = args[0];
+            }            
             break;
         case ZERO:
             // Retrieve the device instance and get new offsets.
             instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
-            double data[];
             switch (dev) {
                 case ORIENTATION_BOARD:
-                    if (loc == OB_HEAD) {
-                        
-                    } else {
-
+                    if (args[0]) {
+                        OB_zero(instance);
+                    }
+                    if (args[1]) {
+                        instance = get_device_instance(i+1);
+                        OB_zero(instance);
                     }
                     break;
                 case SCALE:
+                    instance->offsets[0] = scale_zero();
                     break;
                 case FSR:
+                    FSR_zero(instance);
                     break;
                 case IMU:
+                    if (args[0]) {
+                        IMU_zero(instance);
+                    }
+                    if (args[1]) {
+                        instance = get_device_instance(i+1);
+                        IMU_zero(instance);
+                    }               
                     break;
                 default:
                     const char tmp[] = {"INVALID_ZERO_COMMAND\n\0"};
@@ -135,31 +168,21 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
  *   Returns -1 if a command was detected but incomplete or parsing otherwise failed.
  */
 int poll_cmd(BufferedSerial* ser) {
-    char buffer[MAX_STR_LEN];
     std::string str;
     // Read from the serial buffer.
-    int len = ser->read(buffer, MAX_STR_LEN);
-    if (len <= 0) {
+    cmd_idx += ser->read(cmd_buff+cmd_idx, MAX_STR_LEN);
+    if (cmd_idx <= 0) {
         // No data.
         return 0;
     } else {
         // Data exists. Check if the command is complete.
-        char last = buffer[len-1];
+        char last = cmd_buff[cmd_idx-1];
         if ((last == '\n') || (last == '\0')) {
-            str = buffer;
-            str.erase(len-1);
+            str = cmd_buff;
+            str.erase(cmd_idx-1);
+            cmd_idx = 0;
         } else {
-            // Command not complete. Repeatedly check for more data until 1ms timeout.
-            int iters = 10;
-            while (iters-- > 0) {
-                len += ser->read(buffer+len, MAX_STR_LEN-len);
-                last = buffer[len-1];
-                if ((last == '\n') || (last == '\0')) {
-                    str = buffer;
-                    str.erase(len-1);
-                    break;
-                }
-            }
+            return 0;
         }
     }
 
@@ -172,10 +195,13 @@ int poll_cmd(BufferedSerial* ser) {
 
     // Act on the command.
     if (success) {
-        if (args[0] == STATUS_PARAM) {
+        if (args[3] == STATUS_CODE) {
             // Status request.
             int i;
             DeviceInstance* instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
+            if (args[0] == EUL_PARAM_CODE || args[0] == GYR_PARAM_CODE) {
+                instance = get_device_instance(i+1);
+            }
             if (instance == NULL) {
                 const char tmp[] = {"INVALID_DEVICE_ERROR\n\0"};
                 ser->write(tmp, sizeof(tmp));
@@ -201,6 +227,7 @@ int poll_cmd(BufferedSerial* ser) {
 bool parse_cmd(std::string cmd, Device* dev, Location* loc, Function* func, double* args, int numargs) {
     // Return variable.
     bool valid_cmd = false;
+    bool status = false;
     // Split the command.
     std::vector<std::string> vec = split_string(cmd, DELIM);
     int len = vec.size();
@@ -214,24 +241,33 @@ bool parse_cmd(std::string cmd, Device* dev, Location* loc, Function* func, doub
         // Get the command.
         to_enum(vec.at(2), func);
         if (*func == NO_FUNCTION) return false;
-        // Get the arguments.
+        // Check for status functions (CAL, OFF, EN)
+        if (*func == CALIBRATION || *func == OFFSET || *func == ENABLE) {
+            status = true;
+        }
+        // Process the arguments.
         for (int i = 3; (i < len) && (i-3 < numargs); i++) {
-            if (vec.at(i) == "STAT") {
-                args[i-3] = STATUS_PARAM;
-                break;
-            } else if (vac.at(i) == "ACC") {
-                args[i-3] = OFF_ACC_PARAM;
-            } else if (vac.at(i) == "EUL") {
-                args[i-3] = OFF_EUL_PARAM);
-            } else if (vac.at(i) == "GYR") {
-                args[i-3] = OFF_GYR_PARAM);
+            // Convert the argument to a double.
+            char* ptr;
+            args[i-3] = strtod(vec.at(i).c_str(), &ptr);
+            if (ptr == vec.at(i).c_str()) {
+                // Conversion unsuccessful, check if parameter descriptor.
+                if (vec.at(i) == "ACC") {
+                    args[i-3] = ACC_PARAM_CODE;
+                } else if (vec.at(i) == "EUL") {
+                    args[i-3] = EUL_PARAM_CODE;
+                } else if (vec.at(i) == "GYR") {
+                    args[i-3] = GYR_PARAM_CODE;
+                }
             } else {
-                args[i-3] = stoi(vec.at(i));
+                // Clear status flag if conversion successful.
+                status = false;
             }
         }
         valid_cmd = true;
     }
     // Return.
+    if (status) args[numargs-1] = STATUS_CODE;
     return valid_cmd;
 }
 

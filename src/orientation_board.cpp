@@ -43,6 +43,42 @@ Adafruit_BNO055* OB_get(int instance) {
     return ((instance == OB_HEAD) ? &ob_head : &ob_body);
 }
 
+void OB_zero(DeviceInstance* sensor) {
+    // Obtain 5 acceleration samples.
+    double data[3] = {0};
+    double tmp[3];
+    for (int i = 0; i < 5; i++) {
+        OB_collect(sensor, tmp);
+        data[0] += tmp[0];
+        data[1] += tmp[1];
+        data[2] += tmp[2];
+    }
+    // Save the average offset (inverse of the reading).
+    sensor->offsets[0] = data[0] / (-5);
+    sensor->offsets[1] = data[1] / (-5);
+    sensor->offsets[2] = data[2] / (-5);
+}
+
+bool OB_collect(DeviceInstance* sensor, double* data) {
+    // Get pointer to the correct BN055 instance.
+    int instance;
+    if (sensor->loc == HEAD)
+        instance = OB_HEAD;
+    else if (sensor->loc == BODY)
+        instance = OB_BODY;
+    else
+        return false;
+    // Retrieve acceleration or euler vector and store.
+    if (sensor->func == ACCELERATION)
+        OB_get_accel(instance, &data[0], &data[1], &data[2]);
+    else if (sensor->func == EULER)
+        OB_get_euler(instance, &data[0], &data[1], &data[2]);
+    else
+        return false;
+
+    return true;
+}
+
 /**
  * Get the calibration statuses from the specified Orientation Board instance.
  */
