@@ -44,7 +44,7 @@ int IMU_init(uint8_t addr) {
     // CTRL1_XL (Accelerometer control register 1)
     //   416Hz, +-8g
     I2C_write(addr, LSM6DSOX_CTRL1_XL_ADDR, 0x6A);
-    acc_sens = 0.244; // 0.244 milli-g per bit in +-8g scale
+    acc_sens = 0.122; // 0.244 milli-g per bit in +-8g scale
     // CTRL8_XL (Control register 8)
     //   clear XL_FS_MODE to retain full +-16g scale
     I2C_clearBits(addr, LSM6DSOX_CTRL8_XL_ADDR, 0x02);

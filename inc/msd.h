@@ -16,6 +16,7 @@
 #include "communications.h"
 
 // UART definitions.
+#define DEBUG
 #ifdef DEBUG
     #define UART_TX         (USBTX)     
     #define UART_RX         (USBRX)
@@ -33,14 +34,15 @@
     #define FSR_PERIOD_MS               (5000)
     #define SCALE_PERIOD_MS             (1200)
     #define SEND_PERIOD_MS              (1000)
+    #define POLL_CMD_PERIOD_MS          (1000)
 #else
     #define OB_PERIOD_MS                (10)
     #define IMU_PERIOD_MS               (10)
     #define FSR_PERIOD_MS               (50)
     #define SCALE_PERIOD_MS             (12)
     #define SEND_PERIOD_MS              (10)
+    #define POLL_CMD_PERIOD_MS          (100)
 #endif
-#define POLL_CMD_PERIOD_MS          (100)
 
 // Indices of the device array.
 #define OB_FIRST_IDX                (1)
@@ -64,7 +66,7 @@ typedef struct {
 
 /* Communication Function Prototypes */
 // Send sensor data.
-void send_data(bool loggingEn, char* data, int* size, BufferedSerial* ser);
+void send_data(bool* loggingEn, char* data, int* size, BufferedSerial* ser);
 // Send sensor status.
 void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser);
 void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSerial* ser);

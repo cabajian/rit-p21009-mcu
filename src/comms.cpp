@@ -69,8 +69,8 @@ void send_status(DeviceInstance *instance, Function status, BufferedSerial* ser)
  * Sends the sensor data contained in data_buff to be 
  * transmitted via Ethernet if system logging is enabled.
  */
-void send_data(bool loggingEn, char* data, int* size, BufferedSerial* ser) {
-    if (loggingEn) {
+void send_data(bool* loggingEn, char* data, int* size, BufferedSerial* ser) {
+    if (*loggingEn) {
         data[*size] = '\0';
         #ifdef DEBUG
             // DEBUG: write data over serial
@@ -79,8 +79,9 @@ void send_data(bool loggingEn, char* data, int* size, BufferedSerial* ser) {
             // Non-debug: write data over ethernet
             ethernet_send(data, *size);
         #endif
-        *size = 0;
     }
+    // Restart the buffer regardless.
+    *size = 0;
 }
 
 void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSerial* ser) {
@@ -167,17 +168,18 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
  *   Returns 0 if no command was received.
  *   Returns -1 if a command was detected but incomplete or parsing otherwise failed.
  */
-int poll_cmd(BufferedSerial* ser) {
+int poll_cmd(BufferedSerial* ser) {   
     std::string str;
     // Read from the serial buffer.
-    cmd_idx += ser->read(cmd_buff+cmd_idx, MAX_STR_LEN);
-    if (cmd_idx <= 0) {
+    int bytes = ser->read(cmd_buff+cmd_idx, MAX_STR_LEN);
+    if (bytes <= 0) {
         // No data.
         return 0;
     } else {
         // Data exists. Check if the command is complete.
+        cmd_idx += bytes;
         char last = cmd_buff[cmd_idx-1];
-        if ((last == '\n') || (last == '\0')) {
+        if ((last == '\r') || (last == '\n') || (last == '\0')) {
             str = cmd_buff;
             str.erase(cmd_idx-1);
             cmd_idx = 0;

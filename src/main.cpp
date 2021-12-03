@@ -53,7 +53,7 @@ auto e_collect_scale = make_user_allocated_event(collect_scale);
 auto e_collect_fsr = make_user_allocated_event(collect_fsr);
 auto e_collect_imu = make_user_allocated_event(collect_imu);
 auto e_poll_cmd = make_user_allocated_event(poll_cmd, &serial);
-auto e_send_data = make_user_allocated_event(send_data, devices[0].enabled, data_buff, &buff_idx, &serial);
+auto e_send_data = make_user_allocated_event(send_data, &(devices[0].enabled), data_buff, &buff_idx, &serial);
 
 
 /**
@@ -73,7 +73,7 @@ void collect_ob() {
             }
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data[0], DELIM.c_str(), data[1], DELIM.c_str(), data[2]);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n\r", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data[0], DELIM.c_str(), data[1], DELIM.c_str(), data[2]);
             buff_mutex.unlock();
         }
     }
@@ -93,7 +93,7 @@ void collect_scale() {
             double data = scale_read();
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n\r", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data);
             buff_mutex.unlock();
         }
     }
@@ -112,7 +112,7 @@ void collect_fsr() {
             double data = FSR_collect(sensor);
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f\n\r", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data);
             buff_mutex.unlock();
         }
     }
@@ -135,7 +135,7 @@ void collect_imu() {
             }
             // Add the data to the buffer.
             buff_mutex.lock();
-            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data[0], DELIM.c_str(), data[1], DELIM.c_str(), data[2]);
+            buff_idx += snprintf(data_buff+buff_idx, MAX_STR_LEN-buff_idx, "%s%s%s%s%s%s%f%s%f%s%f\n\r", to_char(sensor->dev), DELIM.c_str(), to_char(sensor->loc), DELIM.c_str(), to_char(sensor->func), DELIM.c_str(), data[0], DELIM.c_str(), data[1], DELIM.c_str(), data[2]);
             buff_mutex.unlock();
         }
     }    
@@ -152,22 +152,22 @@ void post_events() {
     // OB (Head+Body)
     for (int i = OB_FIRST_IDX; i <= OB_LAST_IDX; i++) {
         sensor = &devices[i];
-        sensor->enabled = 0;
+        sensor->enabled = false;
     }
     // Scale
     for (int i = SCALE_FIRST_IDX; i <= SCALE_LAST_IDX; i++) {
         sensor = &devices[i];
-        sensor->enabled = 0;
+        sensor->enabled = false;
     }
     // FSR
     for (int i = FSR_FIRST_IDX; i <= FSR_LAST_IDX; i++) {
         sensor = &devices[i];            
-        sensor->enabled = 0;
+        sensor->enabled = false;
     }
     // IMU (Left+Right)
     for (int i = IMU_FIRST_IDX; i <= IMU_LAST_IDX; i++) {
         sensor = &devices[i];            
-        sensor->enabled = 0;
+        sensor->enabled = true;
     }
     // Event periods.
     e_collect_ob.period(OB_PERIOD_MS);
@@ -224,6 +224,7 @@ DeviceInstance* get_device_instance(Device dev, Location loc, Function func, int
 int main() {
     /* Initialize modules */
     // Initialize communication modules.
+    serial.write("Program started\r\n", 17);
     I2C_init();
     #ifndef DEBUG
         ethernet_init();
@@ -233,7 +234,9 @@ int main() {
     OB_init(OB_BODY);
     IMU_init(LSM6DSOX_ADDR_A);
     IMU_init(LSM6DSOX_ADDR_B);
+    serial.set_blocking(false);
     
+    serial.write("Initializations done\r\n", 22);
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));
