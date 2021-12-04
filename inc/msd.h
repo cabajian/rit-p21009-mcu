@@ -16,7 +16,6 @@
 #include "communications.h"
 
 // UART definitions.
-#define DEBUG
 #ifdef DEBUG
     #define UART_TX         (USBTX)     
     #define UART_RX         (USBRX)

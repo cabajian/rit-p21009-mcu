@@ -13,7 +13,7 @@
 #include "LWIPStack.h"
 
 // Static IP network variables
-static const char* PI_IP   = "169.254.108.19";
+static const char* PI_IP   = "169.254.180.193";
 static const char* MBED_IP = "192.168.0.38";
 static const char* NETMASK = "255.255.0.0";
 static const char* GATEWAY = "0.0.0.0";
