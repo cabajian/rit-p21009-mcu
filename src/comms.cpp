@@ -212,6 +212,7 @@ int poll_cmd(BufferedSerial* ser) {
             }
         } else {
             // Act on the command.
+            printf("%s,%s,%s,%f,%f,%f,%f\r\n", to_string(dev).c_str(), to_string(loc).c_str(), to_string(func).c_str(), args[0], args[1], args[2], args[3]);
             handle_cmd(dev, loc, func, args, ser);
         }
         return 1;

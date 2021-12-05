@@ -41,6 +41,7 @@ static DeviceInstance devices[] = {
 };
 // Instances
 BufferedSerial serial(UART_TX, UART_RX, UART_BAUD);
+
 // Data buffer.
 char data_buff[MAX_STR_LEN];
 int buff_idx;
@@ -167,7 +168,7 @@ void post_events() {
     // IMU (Left+Right)
     for (int i = IMU_FIRST_IDX; i <= IMU_LAST_IDX; i++) {
         sensor = &devices[i];            
-        sensor->enabled = true;
+        sensor->enabled = false;
     }
     // Event periods.
     e_collect_ob.period(OB_PERIOD_MS);
@@ -224,7 +225,7 @@ DeviceInstance* get_device_instance(Device dev, Location loc, Function func, int
 int main() {
     /* Initialize modules */
     // Initialize communication modules.
-    serial.write("Program started\r\n", 17);
+    printf("Program started\r\n");
     I2C_init();
     #ifndef DEBUG
         ethernet_init();
@@ -236,7 +237,8 @@ int main() {
     IMU_init(LSM6DSOX_ADDR_B);
     serial.set_blocking(false);
     
-    serial.write("Initializations done\r\n", 22);
+    printf("Initialization complete\r\n");
+    
     // Event queue thread
     Thread event_thread;
     event_thread.start(callback(post_events));

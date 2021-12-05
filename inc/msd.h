@@ -19,11 +19,11 @@
 #ifdef DEBUG
     #define UART_TX         (USBTX)     
     #define UART_RX         (USBRX)
-    #define UART_BAUD       (576000)
+    #define UART_BAUD       (115200)
 #else
-    #define UART_TX         (D1)     
-    #define UART_RX         (D0)
-    #define UART_BAUD       (576000)
+    #define UART_TX         (PTB11)     
+    #define UART_RX         (PTB10)
+    #define UART_BAUD       (115200)
 #endif
 
 // Sensor sampling periods.
