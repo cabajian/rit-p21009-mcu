@@ -12,9 +12,10 @@
 #include "msd.h"
 
 // Pin mappings.
-#define PCB_ANALOG_IN   (A0)
-#define PCB_S1_OUT      (PTD0)
-#define PCB_S0_OUT      (PTC4)
+#define PCB_ANALOG_IN_LEFT  (A1)
+#define PCB_ANALOG_IN_RIGHT (A0)
+#define PCB_S1_OUT          (PTD0)
+#define PCB_S0_OUT          (PTC4)
 
 // Number of ADC samples per datum collection.
 #define ADC_SAMPLES     (2)

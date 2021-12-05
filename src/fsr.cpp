@@ -7,7 +7,8 @@
 #include <mbed.h>
 #include "fsr.h"
 
-AnalogIn pcb_in(PCB_ANALOG_IN);
+AnalogIn pcb_in_left(PCB_ANALOG_IN_LEFT);
+AnalogIn pcb_in_right(PCB_ANALOG_IN_RIGHT);
 DigitalOut pcb_s1(PCB_S1_OUT);
 DigitalOut pcb_s0(PCB_S0_OUT);
 
@@ -23,23 +24,30 @@ void FSR_zero(DeviceInstance* sensor) {
 
 double FSR_collect(DeviceInstance* sensor) {
     // Set mux selects going to the PCB.
+    // These selects are dependent on the hardware configuration
+    // of the protoboard, currently as follows.
+    bool left_side = false;
     switch (sensor->loc) {
         case FOREARM_LEFT:
-        case FOREARM_RIGHT:
+            left_side = true;
+        case HIP_RIGHT:
             pcb_s1 = 0;
             pcb_s0 = 0;
             break;
-        case RIB_LEFT:
+        case KNEE_LEFT:
+            left_side = true;
         case RIB_RIGHT:
             pcb_s1 = 0;
             pcb_s0 = 1;
             break;
-        case HIP_LEFT:
-        case HIP_RIGHT:
+        case RIB_LEFT:
+            left_side = true;
+        case FOREARM_RIGHT:
             pcb_s1 = 1;
             pcb_s0 = 0;
             break;
-        case KNEE_LEFT:
+        case HIP_LEFT:
+            left_side = true;
         case KNEE_RIGHT:
             pcb_s1 = 1;
             pcb_s0 = 1;
@@ -50,9 +58,16 @@ double FSR_collect(DeviceInstance* sensor) {
     }
     // Read the analog value (average from ADC_SAMPLES).
     float samples[ADC_SAMPLES];
-    samples[0] = pcb_in.read();
-    for (int i = 1; i < ADC_SAMPLES; i++) {
-        samples[i] = (pcb_in.read() + samples[i-1])/2.0;
+    if (left_side) {
+        samples[0] = pcb_in_left.read();
+        for (int i = 1; i < ADC_SAMPLES; i++) {
+            samples[i] = (pcb_in_left.read() + samples[i-1])/2.0;
+        }
+    } else {
+        samples[0] = pcb_in_right.read();
+        for (int i = 1; i < ADC_SAMPLES; i++) {
+            samples[i] = (pcb_in_right.read() + samples[i-1])/2.0;
+        }
     }
     // Store the data.
     return samples[ADC_SAMPLES-1];
