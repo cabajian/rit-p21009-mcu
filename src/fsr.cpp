@@ -70,5 +70,5 @@ double FSR_collect(DeviceInstance* sensor) {
         }
     }
     // Store the data.
-    return samples[ADC_SAMPLES-1];
+    return samples[ADC_SAMPLES-1]*150.0;//multiply by FSR range to obtain Newtons
 }
