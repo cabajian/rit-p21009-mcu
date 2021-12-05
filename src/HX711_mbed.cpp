@@ -61,7 +61,7 @@ void HX711::set_gain(uint8_t gain) {
 long HX711::read() {
 
 	// Wait for the chip to become ready.
-	wait_ready();
+	wait_ready_timeout();
 
 	// Define structures for reading data into.
 	unsigned long value = 0;
@@ -146,8 +146,8 @@ bool HX711::wait_ready_timeout(unsigned long timeout, unsigned long delay_ms) {
 	// Wait for the chip to become ready until timeout.
 	// https://github.com/bogde/HX711/pull/96
     Timer t;
-    auto millisStarted = timer_read_ms(t);
-	while (timer_read_ms(t) - millisStarted < timeout) {
+	t.start();
+	while (timer_read_ms(t) < timeout) {
 		if (is_ready()) {
 			return true;
 		}

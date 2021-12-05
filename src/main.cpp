@@ -225,7 +225,6 @@ DeviceInstance* get_device_instance(Device dev, Location loc, Function func, int
 int main() {
     /* Initialize modules */
     // Initialize communication modules.
-    printf("Program started\r\n");
     I2C_init();
     #ifndef DEBUG
         ethernet_init();
@@ -233,11 +232,10 @@ int main() {
     // Initialize sensors.
     OB_init(OB_HEAD);
     OB_init(OB_BODY);
+    scale_init();
     IMU_init(LSM6DSOX_ADDR_A);
     IMU_init(LSM6DSOX_ADDR_B);
     serial.set_blocking(false);
-    
-    printf("Initialization complete\r\n");
     
     // Event queue thread
     Thread event_thread;

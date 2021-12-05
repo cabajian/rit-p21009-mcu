@@ -21,8 +21,8 @@
     #define UART_RX         (USBRX)
     #define UART_BAUD       (115200)
 #else
-    #define UART_TX         (PTB11)     
-    #define UART_RX         (PTB10)
+    #define UART_TX         (PTB11)//must not colllide with ETH
+    #define UART_RX         (PTB10)//must not colllide with ETH
     #define UART_BAUD       (115200)
 #endif
 

@@ -87,26 +87,30 @@ void send_data(bool* loggingEn, char* data, int* size, BufferedSerial* ser) {
 void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSerial* ser) {
     DeviceInstance* instance;
     int i;
+    
+    instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
+    if (instance == NULL) return;
+
     switch (cmd) {
         case RESTART:
             NVIC_SystemReset();//TODO: need to verify this works and doesn't halt
             break;
         case ENABLE:
             // Enable the device.
-            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             instance->enabled = (args[0] > 0);
             // OB/IMU have two data types.
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
                 instance = get_device_instance(i+1);
+                if (instance == NULL) break;
                 instance->enabled = (args[0] > 0);
             }
             break;
         case OFFSET:
-            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
                 // Load the 3 offsets.
                 if (args[0] == EUL_PARAM_CODE || args[0] == GYR_PARAM_CODE) {
                     instance = get_device_instance(i+1);
+                    if (instance == NULL) break;
                 }
                 instance->offsets[0] = args[1];
                 instance->offsets[1] = args[2];
@@ -118,7 +122,6 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
             break;
         case ZERO:
             // Retrieve the device instance and get new offsets.
-            instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
             switch (dev) {
                 case ORIENTATION_BOARD:
                     if (args[0]) {
@@ -126,6 +129,7 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
                     }
                     if (args[1]) {
                         instance = get_device_instance(i+1);
+                        if (instance == NULL) break;
                         OB_zero(instance);
                     }
                     break;
@@ -141,6 +145,7 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
                     }
                     if (args[1]) {
                         instance = get_device_instance(i+1);
+                        if (instance == NULL) break;
                         IMU_zero(instance);
                     }               
                     break;
@@ -150,10 +155,12 @@ void handle_cmd(Device dev, Location loc, Function cmd, double* args, BufferedSe
             }
             // Zero this sensor and store the offsets.
             instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
+            if (instance == NULL) break;
             // TODO: zero the sensor
             // OB/IMU have two data types
             if ((dev == ORIENTATION_BOARD) || (dev == IMU)) {
                 instance = get_device_instance(i+1);
+                if (instance == NULL) break;
             }
             break;
         default:
@@ -192,7 +199,7 @@ int poll_cmd(BufferedSerial* ser) {
     Device dev;
     Location loc;
     Function func;
-    double args[4];
+    double args[4] = {0};
     bool success = parse_cmd(str, &dev, &loc, &func, args, 4);
 
     // Act on the command.
@@ -201,8 +208,10 @@ int poll_cmd(BufferedSerial* ser) {
             // Status request.
             int i;
             DeviceInstance* instance = get_device_instance(dev, loc, NO_FUNCTION, &i);
+            if (instance == NULL) return -1;
             if (args[0] == EUL_PARAM_CODE || args[0] == GYR_PARAM_CODE) {
                 instance = get_device_instance(i+1);
+                if (instance == NULL) return -1;
             }
             if (instance == NULL) {
                 const char tmp[] = {"INVALID_DEVICE_ERROR\n\0"};
@@ -212,7 +221,7 @@ int poll_cmd(BufferedSerial* ser) {
             }
         } else {
             // Act on the command.
-            printf("%s,%s,%s,%f,%f,%f,%f\r\n", to_string(dev).c_str(), to_string(loc).c_str(), to_string(func).c_str(), args[0], args[1], args[2], args[3]);
+            //printf("%s,%s,%s,%f,%f,%f,%f\r\n", to_string(dev).c_str(), to_string(loc).c_str(), to_string(func).c_str(), args[0], args[1], args[2], args[3]);
             handle_cmd(dev, loc, func, args, ser);
         }
         return 1;

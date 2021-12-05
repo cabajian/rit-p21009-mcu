@@ -50,16 +50,16 @@ static const std::string locationStrings[] = {
     "H",
     "B",
     "CH",
-    "RL",
-    "RR",
-    "FL",
-    "FR",
-    "HL",
-    "HR",
-    "LL",
     "LR",
-    "KL",
-    "KR"
+    "RR",
+    "LF",
+    "RF",
+    "LH",
+    "RH",
+    "LL",
+    "RL",
+    "LK",
+    "RK"
 };
 inline std::string to_string(Location loc) {
     return locationStrings[loc];
